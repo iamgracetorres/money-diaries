@@ -131,6 +131,21 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .tabbar button[aria-current="page"] { color: var(--accent-deep); font-weight: 500; }
 .tabbar .tab-add span { background: var(--accent); color: #fff; width: 40px; height: 32px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; }
 .tabbar .tab-add[aria-current="page"] span { background: var(--accent-deep); }
+/* Transactions by day, compact */
+.day { margin-bottom: 12px; }
+.day-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; font-weight: 700; color: var(--charcoal); padding: 4px 2px 6px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+.day-head .o { color: var(--expense); font-family: var(--font-display); font-weight: 500; } .day-head .i { color: var(--income); font-family: var(--font-display); font-weight: 500; margin-left: 8px; }
+.txc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 7px 2px; font: inherit; color: inherit; }
+.txc:last-child { border-bottom: 0; }
+.txc .d { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txc .st { color: #e9b52f; font-size: 12px; }
+.txc .a { font-family: var(--font-display); font-weight: 500; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.txc .a.inc { color: var(--income); }
+.txc .c { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txc .c.miss { color: var(--accent-deep); font-weight: 700; }
+.txc .dupx { color: var(--expense); }
+.txc.bad { background: var(--warn-soft); }
+.day .tx { margin: 6px 0; }
 /* Debt */
 .debt-total { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--accent-deep); }
 .debt { border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 10px; display: grid; gap: 6px; }
@@ -674,9 +689,33 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     const p = period(), rows = p ? p.rows : [], links = transferLinks();
     $("tx-count").textContent = rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : "";
     if (!rows.length) { $("tx-list").innerHTML = `<p class="empty">Nothing yet for ${html(ui.bank)} in ${monthLabel(ui.month)}.</p>`; return; }
-    const seen = [];
-    $("tx-list").innerHTML = rows.map(r => {
-      const dup = seen.some(x => sameTxn(x, r)); seen.push(r);
+    const seen = [], dupIds = new Set();
+    rows.forEach(r => { if (seen.some(x => sameTxn(x, r))) dupIds.add(r.id); seen.push(r); });
+    // Newest day first; each day shows its money out / money in.
+    const days = {}; rows.forEach(r => { (days[isDate(r.date) ? r.date : "no-date"] = days[isDate(r.date) ? r.date : "no-date"] || []).push(r); });
+    const order = Object.keys(days).sort((a, b) => b.localeCompare(a));
+    $("tx-list").innerHTML = order.map(d => {
+      const list = days[d]; let out = 0, inn = 0;
+      list.filter(isValid).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") inn += n; else out += n; });
+      const label = d === "no-date" ? "No date" : new Date(d + "T00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      return `<div class="day"><div class="day-head"><span>${label}</span><span>${out ? `<span class="o">−${peso(out)}</span>` : ""}${inn ? `<span class="i">+${peso(inn)}</span>` : ""}</span></div>`
+        + list.map(r => r.id === openTx ? txEditor(r, links, dupIds.has(r.id)) : txCompact(r, links, dupIds.has(r.id))).join("") + `</div>`;
+    }).join("");
+  }
+  let openTx = null;
+  function txCompact(r, links, dup) {
+    const xferTo = links.src.get(r.id);
+    const cat = xferTo ? `↔ to ${xferTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ split ${r.parts.length} ways`
+      : r.type === "income" ? (r.category || "") : [rowGroup(r), r.category].filter(Boolean).join(" › ");
+    const missing = !xferTo && needsCat(r);
+    const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—";
+    return `<button type="button" class="txc${isValid(r) ? "" : " bad"}" data-open="${r.id}">
+      <span class="d">${html(r.description || "No description")}${findRule(r) ? ' <span class="st">★</span>' : ""}</span>
+      <span class="a ${r.type === "income" ? "inc" : ""}">${r.type === "income" ? "+" : "−"}${amt}</span>
+      <span class="c${missing ? " miss" : ""}">${missing ? "Pick a category" : html(cat)}${dup ? ' <span class="dupx">· ⚠ duplicate?</span>' : ""}</span>
+    </button>`;
+  }
+  function txEditor(r, links, dup) {
       const rule = findRule(r); const xferTo = links.src.get(r.id);
       const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : r.amount;
       let cats;
@@ -692,9 +731,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
         <div class="tx-top">${dup ? `<span class="tag dup">⚠ Looks like a duplicate</span>` : r.paidFrom ? `<span class="tag xfer">↔ Transfer from ${html(r.paidFrom)}</span>` : ""}
           <span style="margin-left:auto"></span>
           <button type="button" class="icon star${rule ? " on" : ""}" data-act="star" aria-label="${rule ? "Forget this vendor" : "Remember this category"}">${rule ? "★" : "☆"}</button>
-          <button type="button" class="icon" data-act="del" aria-label="Delete">×</button></div>
+          <button type="button" class="icon" data-act="del" aria-label="Delete">×</button>
+          <button type="button" class="btn small" data-act="done">Done</button></div>
       </div>`;
-    }).join("");
   }
   $("tx-list").addEventListener("change", e => {
     const card = e.target.closest(".tx"), f = e.target.dataset.f; if (!card || !f) return;
@@ -713,7 +752,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   function syncRule(x, r) { if (r.type === "income") { x.category = r.category; if (r.paidFrom) x.paidFrom = r.paidFrom; else delete x.paidFrom; } else { x.group = rowGroup(r); x.category = r.category; } }
   let delArmed = null;
   $("tx-list").addEventListener("click", e => {
+    const o = e.target.closest("[data-open]"); if (o) { openTx = o.dataset.open; renderList(); const ed = document.querySelector(`.tx[data-id="${CSS.escape(openTx)}"]`); if (ed) ed.scrollIntoView({ block: "nearest" }); return; }
     const b = e.target.closest("button[data-act]"); if (!b) return;
+    if (b.dataset.act === "done") { openTx = null; renderList(); return; }
     const card = b.closest(".tx"), p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     if (b.dataset.act === "del") {
       if (delArmed !== r.id) { delArmed = r.id; b.textContent = "Delete?"; b.style.fontSize = "13px"; b.style.color = "var(--expense)"; setTimeout(() => { if (delArmed === r.id) { delArmed = null; renderList(); } }, 3000); return; }
