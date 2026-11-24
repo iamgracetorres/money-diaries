@@ -333,7 +333,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       <summary>My banks &amp; categories</summary>
       <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Banks</h3>
       <div id="c-accounts"></div>
-      <form class="row" id="f-acct" style="margin:8px 0 16px;flex-wrap:wrap"><input placeholder="Add an account"><select id="f-acct-type" aria-label="Group" style="flex:0 0 auto;width:auto"><option value="credit">💳 Credit</option><option value="debit" selected>🏦 Debit</option><option value="ewallet">📱 E-wallet</option><option value="cash">💵 Cash</option><option value="goal">🎯 Goal</option></select><button class="btn small">Add</button></form>
+      <form class="row" id="f-acct" style="margin:8px 0 16px;flex-wrap:wrap"><input placeholder="Add an account"><select id="f-acct-type" aria-label="Group" style="flex:0 0 auto;width:auto"><option value="cash">💵 Cash</option><option value="debit" selected>🏦 Debit</option><option value="ewallet">📱 E-wallet</option><option value="credit">💳 Credit</option><option value="goal">🎯 Goal</option></select><button class="btn small">Add</button></form>
       <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Expense categories</h3>
       <div id="c-groups"></div>
       <form class="row" id="f-group" style="margin:8px 0 16px"><input placeholder="Add a category"><button class="btn small">Add</button></form>
@@ -444,7 +444,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 
   // ===== Shared core (same in the online page and the phone app) =====
   // Account types: every account sits in one group. Credit cards show what you owe; everything else shows what you have.
-  const ACCT_TYPES = [["credit", "💳 Credit"], ["debit", "🏦 Debit"], ["ewallet", "📱 E-wallets"], ["cash", "💵 Cash"], ["goal", "🎯 Goals"]];
+  const ACCT_TYPES = [["cash", "💵 Cash"], ["debit", "🏦 Debit"], ["ewallet", "📱 E-wallets"], ["credit", "💳 Credit"], ["goal", "🎯 Goals"]];
   const TYPE_ICON = { credit: "💳", debit: "🏦", ewallet: "📱", cash: "💵", goal: "🎯" };
   const acctType = (b) => (lists.accountTypes && lists.accountTypes[b]) || ((lists.creditAccounts || []).includes(b) ? "credit" : "debit");
   const isCredit = (b) => acctType(b) === "credit";
