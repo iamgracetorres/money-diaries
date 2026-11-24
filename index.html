@@ -210,6 +210,31 @@ h1, h2, .hi, .cell .v, .cell input, .amt-big, .tx .amt, .tabbar button, details 
 h1 { font-weight: 600; letter-spacing: .03em; } h2, details summary { font-weight: 500; } .hi { font-weight: 600; }
 body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.hm-pick { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.hm-pick select { flex: 1; min-width: 0; }
+.hm-pick span { color: var(--muted); font-size: 13px; }
+.hm-quick { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+.search-box { margin-bottom: 12px; }
+.search-box input { width: 100%; border-radius: 99px; padding: 11px 16px; }
+#q-results { margin-top: 10px; background: var(--surface); border-radius: 20px; padding: 10px 12px; box-shadow: var(--shadow); }
+.q-sum { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; padding: 2px 2px 8px; }
+.q-sum .o { color: var(--expense); } .q-sum .i { color: var(--income); } .q-sum .btn { margin-left: auto; }
+body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-pane="accounts-list"] { display: none !important; }
+.modal { position: fixed; inset: 0; z-index: 60; background: rgba(51,45,40,.38); display: grid; place-items: center; padding: 16px; }
+.modal-box { background: var(--surface, #fff); border-radius: 22px; padding: 18px; width: min(380px, 100%); box-shadow: 0 18px 50px rgba(0,0,0,.18); display: grid; gap: 10px; }
+.modal-box h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+.modal-box label.k { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.modal-box input, .modal-box select { width: 100%; }
+.modal-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.quick-amts { display: flex; gap: 6px; margin-top: -4px; }
+.dlines { margin-top: 8px; border-top: 1px dashed var(--line); }
+.dline { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: start; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 13.5px; }
+.dline .dd { color: var(--muted, #8a7f76); font-size: 12.5px; padding-top: 1px; }
+.dline .dv { min-width: 0; overflow-wrap: anywhere; }
+.dline .dv small { display: block; color: var(--muted, #8a7f76); font-size: 12px; }
+.dline .da { font-weight: 600; white-space: nowrap; }
+.dline.back .da { color: var(--income, #3f8f5b); }
 </style>
 </head>
 <body>
@@ -225,12 +250,16 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     <div class="notice" id="h-backup" hidden></div>
     <section class="card month-card" aria-labelledby="h-month">
       <div class="card-head"><h2 id="h-month">This month</h2><span class="tag" id="h-month-label"></span></div>
+      <div class="hm-pick"><select id="h-from" aria-label="From month"></select><span>to</span><select id="h-to" aria-label="To month"></select></div>
+      <div class="chips hm-quick" id="h-quick">
+        <button type="button" class="chip-btn" data-hq="0">This month</button><button type="button" class="chip-btn" data-hq="1">Last month</button><button type="button" class="chip-btn" data-hq="3">Last 3 months</button><button type="button" class="chip-btn" data-hq="year">This year</button>
+      </div>
       <div class="bal">
         <div class="cell"><span class="k">Money out</span><span class="v exp" id="h-out">₱ 0.00</span><span class="n" id="h-out-n"></span></div>
         <div class="cell"><span class="k">Money in</span><span class="v inc" id="h-in">₱ 0.00</span><span class="n" id="h-in-n"></span></div>
       </div>
       <div id="h-cats"></div>
-      <p class="hint" style="margin-bottom:0">All banks, by transaction date. Transfers between your own accounts aren't counted.</p>
+      <p class="hint" style="margin-bottom:0">All banks, by transaction date. Transfers between your own accounts and balance adjustments aren't counted.</p>
     </section>
     <section class="card" aria-labelledby="h-acc">
       <div class="card-head"><h2 id="h-acc">My accounts</h2></div>
@@ -247,6 +276,10 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   </div>
 
   <div class="pane" data-pane="accounts" hidden>
+  <section class="search-box" role="search">
+    <input id="q" type="search" placeholder="🔍 Search all banks: vendor, category, memo, amount…" aria-label="Search transactions" autocomplete="off" enterkeyhint="search">
+    <div id="q-results" hidden></div>
+  </section>
   <section class="picker" aria-label="Choose bank and month">
     <label for="p-bank">Which bank?<select id="p-bank"></select></label>
     <label for="p-month"><span id="p-month-label">Month</span>
@@ -545,11 +578,11 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       const items = [];
       rows.forEach(({ r, bank }) => {
         if (r.type === "expense") {
-          if (isSplit(r)) r.parts.forEach(x => { if (rowGroup(x) === "Debt to me" && x.category === person) items.push({ date: r.date, amount: amt(x), dir: "lent", note: x.note || r.description, bank }); });
-          else if (rowGroup(r) === "Debt to me" && r.category === person) items.push({ date: r.date, amount: amt(r), dir: "lent", note: r.description, bank });
-        } else if (r.debtPerson === person) items.push({ date: r.date, amount: amt(r), dir: "paid", note: r.description, bank });
+          if (isSplit(r)) r.parts.forEach(x => { if (rowGroup(x) === "Debt to me" && x.category === person) items.push({ date: r.date, amount: amt(x), dir: "lent", note: x.note || r.description, vendor: r.description, memo: (x.note || "").trim() !== (r.description || "").trim() ? (x.note || "").trim() : "", bank }); });
+          else if (rowGroup(r) === "Debt to me" && r.category === person) items.push({ date: r.date, amount: amt(r), dir: "lent", note: r.description, vendor: r.description, memo: r.note || "", bank });
+        } else if (r.debtPerson === person) items.push({ date: r.date, amount: amt(r), dir: "paid", note: r.description, vendor: r.description, memo: r.note || "", bank });
       });
-      (lists.debtLog || []).filter(e => e.kind === "theirs" && e.ref === person).forEach(e => items.push({ date: e.date, amount: amt(e), dir: e.dir, note: e.note || (e.dir === "paid" ? "Paid back" : "Lent"), id: e.id }));
+      (lists.debtLog || []).filter(e => e.kind === "theirs" && e.ref === person).forEach(e => items.push({ date: e.date, amount: amt(e), dir: e.dir, note: e.note || (e.dir === "paid" ? "Paid back" : "Lent"), vendor: e.dir === "paid" ? "Paid back" : "Lent", memo: e.note && !/^(paid back|lent)$/i.test(e.note) ? e.note : "", id: e.id }));
       items.sort((a, b) => b.date.localeCompare(a.date));
       const lent = items.filter(x => x.dir === "lent").reduce((a, x) => a + x.amount, 0), paid = items.filter(x => x.dir === "paid").reduce((a, x) => a + x.amount, 0);
       return { person, lent, paid, balance: Math.round((lent - paid) * 100) / 100, items };
@@ -1179,6 +1212,25 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       <select name="bank" aria-label="${html(label)}"><option value="">Not from a bank (just note it)</option>${acctOptgroups("", () => true, b => (key.startsWith("paid:") ? "Into " : "From ") + b)}</select>
       <button class="btn primary small" type="submit">${html(btn)}</button></form>`;
   }
+  // Pop-up for "They paid me" and "I lent more": which account, how much, and (for lending) what it was for.
+  function debtDialog(kind, t) {
+    const paid = kind === "paid", owed = Math.max(0, t.balance);
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="${paid ? html(t.person) + " paid me" : "I lent " + html(t.person) + " more"}"><form class="modal-box" data-form="${kind}:${html(t.person)}" autocomplete="off">
+      <h3>${paid ? `💸 ${html(t.person)} paid me` : `🤝 I lent ${html(t.person)} more`}</h3>
+      ${paid && owed ? `<p class="hint" style="margin:0 0 8px">They owe ${peso(owed)}.</p>` : ""}
+      <label class="k">How much<input name="amount" inputmode="decimal" placeholder="₱ 0.00" value="${paid && owed ? peso(owed) : ""}" required></label>
+      ${paid && owed ? `<div class="quick-amts"><button type="button" class="chip-btn" data-fill="${owed}">All of it</button><button type="button" class="chip-btn" data-fill="${Math.round(owed / 2 * 100) / 100}">Half</button></div>` : ""}
+      <label class="k">${paid ? "Which account did it go to?" : "Which account did it come from?"}<select name="bank" required><option value="" disabled selected>Pick an account…</option>${acctOptgroups("", () => true, b => b)}<option value="__none">${paid ? "Cash in hand / not in an account (just note it)" : "Not from an account (just note it)"}</option></select></label>
+      <label class="k">Date<input name="date" type="date" value="${today()}"></label>
+      ${paid ? "" : `<label class="k">Vendor / where<input name="vendor" placeholder="e.g. Lazada"></label><label class="k">Memo<input name="memo" placeholder="e.g. Her share of the groceries"></label>`}
+      <div class="modal-acts"><button type="button" class="btn ghost" data-act="close-modal">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+    </form></div>`;
+  }
+  // Every lending and payment for one person: date, vendor, memo, amount.
+  function debtLines(t) {
+    if (!t.items.length) return `<p class="empty" style="padding:4px 0">Nothing recorded yet.</p>`;
+    return `<div class="dlines">${t.items.map(x => `<div class="dline${x.dir === "paid" ? " back" : ""}"><span class="dd">${short(x.date)}</span><span class="dv">${html(x.vendor || x.note || "")}${x.memo || x.bank ? `<small>${[x.memo, x.bank].filter(Boolean).map(html).join(" · ")}</small>` : ""}</span><span class="da">${x.dir === "paid" ? "−" : "+"}${peso(x.amount)}${x.id ? ` <button type="button" class="x" data-del-log="${html(x.id)}" aria-label="Delete entry">×</button>` : ""}</span></div>`).join("")}</div>`;
+  }
   function renderDebt() {
     const { mine, theirs } = debtSummary();
     const left = mine.reduce((a, d) => a + Math.max(0, d.remaining), 0);
@@ -1199,16 +1251,18 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       return `<div class="debt" data-person="${html(k)}">
         <div class="debt-top"><b>${html(k)}</b><span class="bal-v${t.balance <= 0 ? " done" : ""}">${t.balance > 0 ? "owes " + peso(t.balance) : t.balance < 0 ? "paid " + peso(-t.balance) + " extra" : t.lent ? "All paid ✓" : "Nothing yet"}</span></div>
         <div class="meta">Lent ${peso(t.lent)} · paid back ${peso(t.paid)}</div>
-        <div class="acts"><button type="button" class="btn small primary" data-act="paid">They paid me</button><button type="button" class="btn small" data-act="lent">I lent more</button><button type="button" class="btn small" data-act="thist">History (${t.items.length})</button></div>
-        ${debtOpen === "paid:" + k ? debtForm("paid:" + k, "Paid into", "Save") : ""}
-        ${debtOpen === "lent:" + k ? debtForm("lent:" + k, "Paid from", "Save") : ""}
-        ${debtOpen === "thist:" + k ? `<div class="hist">${t.items.length ? t.items.map(x => `<div><span>${short(x.date)} · ${x.dir === "paid" ? "paid back" : "lent"} · ${html(x.note)}${x.bank ? " · " + html(x.bank) : ""}</span><span>${x.dir === "paid" ? "−" : "+"}${peso(x.amount)}${x.id ? ` <button type="button" class="x" data-del-log="${html(x.id)}" aria-label="Delete entry">×</button>` : ""}</span></div>`).join("") : "Nothing recorded yet."}</div>` : ""}
+        <div class="acts"><button type="button" class="btn small primary" data-act="paid">They paid me</button><button type="button" class="btn small" data-act="lent">I lent more</button></div>
+        ${debtLines(t)}
+        ${debtOpen === "paid:" + k ? debtDialog("paid", t) : ""}
+        ${debtOpen === "lent:" + k ? debtDialog("lent", t) : ""}
       </div>`; }).join("") : `<p class="empty">Add the people who owe you money.</p>`;
   }
   const debtPane = document.querySelector('[data-pane="debt"]');
   debtPane.addEventListener("click", e => {
     const del = e.target.closest("[data-del-log]");
     if (del) { const id = del.dataset.delLog; lists.debtLog = (lists.debtLog || []).filter(x => x.id !== id); lists.debtsDeleted.push(id); save(); renderDebt(); flash("Entry deleted."); return; }
+    if (e.target.classList.contains("modal") || e.target.closest("[data-act=close-modal]")) { debtOpen = null; renderDebt(); return; }
+    const fill = e.target.closest("[data-fill]"); if (fill) { fill.closest("form").amount.value = peso(parseFloat(fill.dataset.fill)); return; }
     const b = e.target.closest("button[data-act]"); if (!b) return;
     const box = b.closest(".debt"); const id = box.dataset.debt, person = box.dataset.person; const act = b.dataset.act;
     if (act === "del-debt") {
@@ -1216,8 +1270,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       lists.debts = lists.debts.filter(d => d.id !== id); lists.debtsDeleted.push(id); save(); renderDebt(); flash("Debt deleted. Its bank transactions stay in your accounts."); return;
     }
     const key = act + ":" + (id || person); debtOpen = debtOpen === key ? null : key; renderDebt();
-    const f = debtPane.querySelector(`form[data-form="${CSS.escape(key)}"] input[name=amount]`); if (f) f.focus();
+    const f = debtPane.querySelector(`form[data-form="${CSS.escape(key)}"] input[name=amount]`); if (f) { f.focus(); if (f.value) f.select(); }
   });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && debtOpen && /^(paid|lent):/.test(debtOpen)) { debtOpen = null; renderDebt(); } });
   debtPane.addEventListener("submit", e => {
     e.preventDefault(); const f = e.target;
     if (f.id === "dm-add") { const amt = cleanAmount($("dm-amount").value); const name = $("dm-name").value.trim();
@@ -1225,18 +1280,21 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       lists.debts.push({ id: uid(), u: Date.now(), name, total: amt, note: $("dm-note").value.trim() }); f.reset(); f.closest("details").open = false; save(); renderDebt(); flash("Debt added."); return; }
     if (f.id === "dt-add") { const name = $("dt-name").value.trim(); if (!name) return; const g = groupByName("Debt to me"); if (g && !g.subs.includes(name)) g.subs.push(name); f.reset(); save(); renderAll(); return; }
     const key = f.dataset.form; if (!key) return;
-    const amt = cleanAmount(f.amount.value), date = f.date.value || today(), bank = f.bank.value;
+    if (f.bank && f.bank.value === "" && f.classList.contains("modal-box")) { flash("Pick the account first."); return; }
+    const amt = cleanAmount(f.amount.value), date = f.date.value || today(), bank = f.bank.value === "__none" ? "" : f.bank.value;
+    const vendor = f.vendor ? f.vendor.value.trim() : "", memo = f.memo ? f.memo.value.trim() : "";
     if (!amt) { flash("Type the amount first."); return; }
     const [kind, ref] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
     if (bank) {
       const r = { id: uid(), u: Date.now(), date, amount: amt, description: "", category: "" };
       if (kind === "pay") { const d = lists.debts.find(x => x.id === ref); Object.assign(r, { type: "expense", description: `Payment: ${d ? d.name : "debt"}`, group: "Debt Payments", debtId: ref }); }
       if (kind === "paid") Object.assign(r, { type: "income", description: `${ref} paid back`, category: "Debt Repayment", debtPerson: ref });
-      if (kind === "lent") Object.assign(r, { type: "expense", description: `Lent to ${ref}`, group: "Debt to me", category: ref });
+      if (kind === "lent") Object.assign(r, { type: "expense", description: vendor || `Lent to ${ref}`, group: "Debt to me", category: ref });
+      if (memo) r.note = memo;
       const p = period(bank, date.slice(0, 7), true); p.rows.push(r); p.rows.sort((a, b2) => (a.date || "9999").localeCompare(b2.date || "9999"));
       flash(`Saved, and added to ${bank} ♡`);
     } else {
-      lists.debtLog.push({ id: uid(), u: Date.now(), kind: kind === "pay" ? "mine" : "theirs", ref, dir: kind === "pay" ? "paid" : kind, date, amount: amt, note: kind === "pay" ? "Payment" : kind === "paid" ? "Paid back" : "Lent" });
+      lists.debtLog.push({ id: uid(), u: Date.now(), kind: kind === "pay" ? "mine" : "theirs", ref, dir: kind === "pay" ? "paid" : kind, date, amount: amt, note: kind === "pay" ? "Payment" : kind === "paid" ? "Paid back" : [vendor, memo].filter(Boolean).join(" · ") || "Lent" });
       flash("Saved ♡");
     }
     debtOpen = null; save(); renderAll();
@@ -1253,6 +1311,50 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   document.querySelector(".tabbar").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) { showTab(b.dataset.tab); if (b.dataset.tab === "home") renderHome(); } });
   const openAccount = (bank, month) => { ui.bank = bank; ui.month = month; renderAll(); showTab("accounts"); };
 
+  // ---------- home period ----------
+  $("h-from").addEventListener("change", e => { homeFrom = e.target.value; homeTo = homeTo || thisMonth(); renderHome(); });
+  $("h-to").addEventListener("change", e => { homeTo = e.target.value; homeFrom = homeFrom || thisMonth(); renderHome(); });
+  $("h-quick").addEventListener("click", e => { const b = e.target.closest("[data-hq]"); if (!b) return; const m = thisMonth(), k = b.dataset.hq;
+    [homeFrom, homeTo] = k === "0" ? [m, m] : k === "1" ? [shiftMonth(m, -1), shiftMonth(m, -1)] : k === "3" ? [shiftMonth(m, -2), m] : [m.slice(0, 4) + "-01", m]; renderHome(); });
+
+  // ---------- search (all banks, all months) ----------
+  // Matches part of a word too, so "grocer" finds Groceries and "pharm" finds Pharmacy. Every word typed has to match.
+  const stem = (w) => w.length > 4 ? w.replace(/(ies|es|s|ing|ed|y)$/, "") : w;
+  function searchText(r, p) {
+    const bits = [r.description, r.note, r.receipt, p.bank, r.type === "income" ? "income money in" : "expense money out", r.category, rowGroup(r), r.paidFrom, r.sentTo, r.paidFrom || r.sentTo ? "transfer" : "", isSplit(r) ? "split" : "", r.date, monthLabel(r.date.slice(0, 7)), cleanAmount(r.amount)];
+    return bits.filter(Boolean).join(" ").toLowerCase();
+  }
+  function renderSearch() {
+    const raw = $("q").value.trim().toLowerCase(), box = $("q-results");
+    document.body.classList.toggle("searching", !!raw); box.hidden = !raw; if (!raw) { box.innerHTML = ""; return; }
+    const words = raw.split(/\s+/).map(w => w.replace(/[₱,]/g, "")).filter(Boolean).map(stem);
+    const hits = [];
+    // A split row counts in full when the search matches the row itself (e.g. "lazada"), or only its matching parts (e.g. "groceries").
+    const partText = (x) => [x.note, x.category, rowGroup(x), cleanAmount(x.amount)].filter(Boolean).join(" ").toLowerCase();
+    Object.values(periods).forEach(p => p.rows.forEach(r => { if (!isDate(r.date)) return; const t = searchText(r, p);
+      if (words.every(w => t.includes(w))) { hits.push({ r, p, n: parseFloat(cleanAmount(r.amount)) || 0 }); return; }
+      if (!isSplit(r)) return; const ps = r.parts.filter(x => { const pt = t + " " + partText(x); return words.every(w => pt.includes(w)); });
+      if (ps.length) hits.push({ r, p, n: ps.reduce((a, x) => a + (parseFloat(cleanAmount(x.amount)) || 0), 0), parts: ps }); }));
+    hits.sort((a, b) => b.r.date.localeCompare(a.r.date));
+    let out = 0, inn = 0; hits.forEach(({ r, n }) => { if (r.type === "income") inn += n; else out += n; });
+    box.innerHTML = `<div class="q-sum"><b>${hits.length} found</b>${out ? ` · <span class="o">−${peso(out)}</span>` : ""}${inn ? ` · <span class="i">+${peso(inn)}</span>` : ""}<button type="button" class="btn ghost small" id="q-clear">Clear</button></div>`
+      + (hits.length ? hits.slice(0, 200).map(({ r, p, n, parts }) => {
+        if (parts) { const cat = parts.map(x => [x.note && x.note !== r.description ? x.note : "", x.category || rowGroup(x)].filter(Boolean).join(" · ")).join(", ");
+          return `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}" data-id="${r.id}"><span class="ic" aria-hidden="true">✂️</span><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)} · part: ${html(cat)}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${peso(n)}</span></button>`; }
+        const cat = r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ ${r.parts.map(x => x.category || rowGroup(x)).filter(Boolean).join(", ") || "split"}` : r.type === "income" ? r.category : [rowGroup(r), r.category].filter(Boolean).join(" › ");
+        const ic = r.sentTo || r.paidFrom ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : needsCat(r) ? "❔" : catIconHtml(rowGroup(r), r.category);
+        return `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}" data-id="${r.id}"><span class="ic" aria-hidden="true">${ic}</span><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)}${cat ? " · " + html(cat) : ""}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—"}</span></button>`; }).join("")
+        + (hits.length > 200 ? `<p class="hint">Showing the newest 200. Type more to narrow it down.</p>` : "")
+      : `<p class="empty">Nothing matches "${html(raw)}".</p>`);
+  }
+  $("q").addEventListener("input", renderSearch);
+  $("q-results").addEventListener("click", e => {
+    if (e.target.closest("#q-clear")) { $("q").value = ""; renderSearch(); return; }
+    const b = e.target.closest(".rec"); if (!b) return;
+    $("q").value = ""; renderSearch(); openTx = b.dataset.id; ui.bank = b.dataset.bank; ui.month = b.dataset.month; renderAll(); showTab("accounts");
+    setTimeout(() => { const ed = document.querySelector(`.tx[data-id="${CSS.escape(openTx)}"]`); if (ed) ed.scrollIntoView({ block: "center" }); }, 60);
+  });
+
   // ---------- home ----------
   const short = (d) => new Date(d + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
   function latestPeriod(bank) { return Object.values(periods).filter(p => p.bank === bank && (p.rows.length || p.ending != null || p.beginning != null)).sort((a, b) => b.month.localeCompare(a.month))[0] || null; }
@@ -1262,8 +1364,15 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     const b0 = beginOf(bank, p.month); if (b0 == null) return { v: null, month: p.month };
     const t = totals(p); return { v: isCredit(bank) ? b0 + t.exp - t.add : b0 + t.add - t.exp, month: p.month, kind: "running" };
   }
+  let homeFrom = null, homeTo = null;
+  function homeRange() { const t = thisMonth(); let a = homeFrom || t, b = homeTo || t; if (a > b) [a, b] = [b, a]; return [a, b]; }
   function renderHome() {
-    const now = new Date(), m = thisMonth();
+    const now = new Date(), m = thisMonth(), [hf, ht] = homeRange();
+    { const months = new Set(); for (let i = 0; i < 24; i++) months.add(shiftMonth(m, -i)); Object.values(periods).forEach(p => p.rows.forEach(r => { if (isDate(r.date)) months.add(r.date.slice(0, 7)); }));
+      const opts = (sel) => [...months].sort().reverse().map(x => `<option value="${x}"${x === sel ? " selected" : ""}>${monthLabel(x)}</option>`).join("");
+      $("h-from").innerHTML = opts(hf); $("h-to").innerHTML = opts(ht);
+      const q = { "0": [m, m], "1": [shiftMonth(m, -1), shiftMonth(m, -1)], "3": [shiftMonth(m, -2), m], year: [m.slice(0, 4) + "-01", m] };
+      document.querySelectorAll("#h-quick [data-hq]").forEach(b => b.classList.toggle("on", q[b.dataset.hq][0] === hf && q[b.dataset.hq][1] === ht)); }
     const hr = now.getHours();
     $("h-hi").textContent = (hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening") + ", Grace ♡";
     $("h-date").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -1275,7 +1384,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     // This month, all banks, by transaction date; own-account transfers and balance adjustments left out.
     const links = transferLinks(); let out = 0, inn = 0, no = 0, ni = 0; const byCat = {};
     Object.values(periods).forEach(p => p.rows.forEach(r => {
-      if (!isValid(r) || r.date.slice(0, 7) !== m || r.paidFrom || r.sentTo || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
+      if (!isValid(r) || r.date.slice(0, 7) < hf || r.date.slice(0, 7) > ht || r.paidFrom || r.sentTo || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
       const n = parseFloat(cleanAmount(r.amount));
       if (r.type === "income") { inn += n; ni++; return; }
       out += n; no++;
@@ -1287,7 +1396,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
         if (g === "No category" && !c.fix) c.fix = { bank: p.bank, month: p.month }; };
       if (isSplit(r)) r.parts.forEach(x => add(x, parseFloat(cleanAmount(x.amount)) || 0)); else add(r, n);
     }));
-    $("h-month-label").textContent = monthLabel(m);
+    const yr = (x) => x.slice(0, 4), mo = (x) => new Date(x + "-01T00:00").toLocaleDateString("en-US", { month: "short" });
+    $("h-month").textContent = hf === ht ? (hf === m ? "This month" : hf === shiftMonth(m, -1) ? "Last month" : monthLabel(hf)) : "These months";
+    $("h-month-label").textContent = hf === ht ? monthLabel(hf) : yr(hf) === yr(ht) ? `${mo(hf)} – ${mo(ht)} ${yr(ht)}` : `${mo(hf)} ${yr(hf)} – ${mo(ht)} ${yr(ht)}`;
     $("h-out").textContent = peso(out); $("h-in").textContent = peso(inn);
     $("h-out-n").textContent = `${no} transaction${no === 1 ? "" : "s"}`; $("h-in-n").textContent = `${ni} transaction${ni === 1 ? "" : "s"}`;
     const cats = Object.entries(byCat).sort((a, b) => b[1].t - a[1].t);
@@ -1298,7 +1409,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
             ? `<button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ No subcategory yet</span><span>${peso(a)} ›</span></button>`
             : `<div class="subline"><span>${catIconHtml(g, sb)} ${html(sb)}</span><span>${peso(a)}</span></div>`).join("")}</div>` : "")
         + (g === "No category" && c.fix ? `<div class="subs"><button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ Pick categories for these</span><span>›</span></button></div>` : "");
-    }).join("") : `<p class="empty" style="padding:6px">Nothing spent yet this month.</p>`;
+    }).join("") : `<p class="empty" style="padding:6px">Nothing spent ${hf === ht && hf === m ? "yet this month" : "in this period"}.</p>`;
     // Accounts
     const sums = {};
     const row = (b) => { const x = balanceOf(b); const cc = isCredit(b);
