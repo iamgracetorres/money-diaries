@@ -123,7 +123,7 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .pane[hidden] { display: none; }
 .fab { display: none; }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(5, 1fr);
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(6, 1fr);
   background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
 .tabbar button { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
@@ -131,6 +131,23 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .tabbar button[aria-current="page"] { color: var(--accent-deep); font-weight: 500; }
 .tabbar .tab-add span { background: var(--accent); color: #fff; width: 40px; height: 32px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; }
 .tabbar .tab-add[aria-current="page"] span { background: var(--accent-deep); }
+/* Debt */
+.debt-total { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--accent-deep); }
+.debt { border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 10px; display: grid; gap: 6px; }
+.debt-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.debt-top b { font-weight: 600; font-family: var(--font-display); font-size: 16px; }
+.debt-top .bal-v { font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.debt-top .bal-v.done { color: var(--income); }
+.debt .meta { font-size: 12.5px; color: var(--muted); }
+.debt .track { height: 8px; border-radius: 99px; background: var(--cream); overflow: hidden; }
+.debt .fill { height: 100%; background: var(--income); border-radius: 99px; }
+.debt .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.debt form { display: grid; gap: 8px; background: var(--cream); border-radius: 12px; padding: 10px; }
+.debt .hist { font-size: 12.5px; display: grid; gap: 2px; background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+.debt .hist div { display: flex; justify-content: space-between; gap: 8px; }
+.debt .hist .x { border: 0; background: none; color: var(--muted); font-size: 14px; padding: 0 4px; }
+.mini-form { margin-top: 6px; } .mini-form summary { font-size: 14px; color: var(--accent-deep); } .mini-form summary::after { content: none !important; }
+.mini-form[open] summary { margin-bottom: 8px; }
 /* Home */
 .hello { padding: 2px 4px 0; }
 .hi { margin: 0; font-size: 22px; font-weight: 500; color: var(--charcoal); }
@@ -141,6 +158,10 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .catbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13.5px; margin-top: 8px; }
 .catbar .track { grid-column: 1 / -1; height: 7px; border-radius: 99px; background: var(--cream); overflow: hidden; }
 .catbar .fill { height: 100%; border-radius: 99px; background: var(--accent); }
+.subs { display: grid; gap: 1px; margin: 4px 0 2px 12px; padding-left: 10px; border-left: 2px solid var(--line); }
+.subline { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); padding: 2px 0; background: none; border: 0; font-family: inherit; width: 100%; text-align: left; }
+.subline span:last-child { font-variant-numeric: tabular-nums; }
+.subline.fixme { color: var(--accent-deep); font-weight: 600; cursor: pointer; }
 .catbar .amt { font-variant-numeric: tabular-nums; color: var(--charcoal); }
 .acct { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
 .acct:last-child { border-bottom: 0; }
@@ -284,13 +305,35 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   </section>
 
   </div>
+  <div class="pane" data-pane="debt" hidden>
+    <section class="card" aria-labelledby="dm-h">
+      <div class="card-head"><h2 id="dm-h">My debt</h2><span class="debt-total" id="dm-total"></span></div>
+      <div id="dm-list"></div>
+      <details class="mini-form"><summary>＋ Add a debt</summary>
+        <form id="dm-add" class="add" autocomplete="off">
+          <input id="dm-name" placeholder="What is it? e.g. Unionbank house loan" aria-label="Debt name">
+          <input id="dm-amount" inputmode="decimal" placeholder="Total you owe, ₱ 0.00" aria-label="Total owed">
+          <input id="dm-note" placeholder="Note (optional), e.g. ₱ 12,000 a month" aria-label="Note">
+          <button class="btn primary" type="submit">Add debt</button>
+        </form>
+      </details>
+    </section>
+    <section class="card" aria-labelledby="dt-h">
+      <div class="card-head"><h2 id="dt-h">Debt to me</h2><span class="debt-total" id="dt-total"></span></div>
+      <div id="dt-list"></div>
+      <details class="mini-form"><summary>＋ Add a person</summary>
+        <form id="dt-add" class="row" autocomplete="off"><input id="dt-name" placeholder="Name" aria-label="Person's name"><button class="btn small">Add</button></form>
+      </details>
+      <p class="hint">Money you spend under <b>Debt to me</b> counts as lent. "They paid me" with a bank adds the money to that bank as <b>Debt Repayment</b>.</p>
+    </section>
+  </div>
   <div class="pane" data-pane="settings" hidden>
   <section class="card">
     <details open>
       <summary>My banks &amp; categories</summary>
       <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Banks</h3>
-      <div class="chips" id="c-accounts"></div>
-      <form class="row" id="f-acct" style="margin:8px 0 16px"><input placeholder="Add bank"><button class="btn small">Add</button></form>
+      <div id="c-accounts"></div>
+      <form class="row" id="f-acct" style="margin:8px 0 16px;flex-wrap:wrap"><input placeholder="Add an account"><select id="f-acct-type" aria-label="Group" style="flex:0 0 auto;width:auto"><option value="credit">💳 Credit</option><option value="debit" selected>🏦 Debit</option><option value="ewallet">📱 E-wallet</option><option value="cash">💵 Cash</option><option value="goal">🎯 Goal</option></select><button class="btn small">Add</button></form>
       <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Expense categories</h3>
       <div id="c-groups"></div>
       <form class="row" id="f-group" style="margin:8px 0 16px"><input placeholder="Add a category"><button class="btn small">Add</button></form>
@@ -302,7 +345,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       <h3 style="font-size:14px;font-weight:500;margin:16px 0 6px">✎ Rename vendors</h3>
       <div class="chips" id="c-renames"></div>
       <form class="row" id="f-rename" style="margin-top:8px;flex-wrap:wrap"><input id="rn-from" placeholder="When it says… e.g. GADC"><input id="rn-to" placeholder="Call it…"><button class="btn small">Add</button></form>
-      <p class="hint">Tap 💳 to move a bank between Credit and Debit. Names go straight into the CSV, so keep them matching Tarsi.</p>
+      <p class="hint">Tap a bank's icon (💳 🏦 📱 💵 🎯) to move it to the next group. Names go straight into the CSV, so keep them matching Tarsi.</p>
     </details>
   </section>
   </div>
@@ -312,6 +355,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   <button type="button" data-tab="home"><span>⌂</span>Home</button>
   <button type="button" data-tab="accounts"><span>▤</span>Accounts</button>
   <button type="button" data-tab="add" class="tab-add"><span>＋</span>Add</button>
+  <button type="button" data-tab="debt"><span>⇄</span>Debt</button>
   <button type="button" data-tab="export"><span>⇪</span>Export</button>
   <button type="button" data-tab="settings"><span>⚙</span>Settings</button>
 </nav>
@@ -389,6 +433,8 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     periods = s && s.periods ? s.periods : {};
     ui = s && s.ui ? s.ui : { bank: lists.accounts[0], month: thisMonth() };
     lastBackup = s && s.lastBackup || null;
+    let ch = normalizeLists(); normalizeRows(() => { ch = true; });
+    if (ch) try { localStorage.setItem(STORE, JSON.stringify({ lists, periods, ui, lastBackup, savedAt: new Date().toISOString() })); } catch (e) {}
   }
   function save() {
     if (typeof scheduleSync === "function") try { scheduleSync(); } catch (e) {}
@@ -396,8 +442,93 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     catch (e) { flash("Couldn't save. Phone storage may be full."); }
   }
 
-  const isCredit = (b) => lists.creditAccounts.includes(b);
-  const ordered = () => [...lists.accounts.filter(isCredit), ...lists.accounts.filter(a => !isCredit(a))];
+  // ===== Shared core (same in the online page and the phone app) =====
+  // Account types: every account sits in one group. Credit cards show what you owe; everything else shows what you have.
+  const ACCT_TYPES = [["credit", "💳 Credit"], ["debit", "🏦 Debit"], ["ewallet", "📱 E-wallets"], ["cash", "💵 Cash"], ["goal", "🎯 Goals"]];
+  const TYPE_ICON = { credit: "💳", debit: "🏦", ewallet: "📱", cash: "💵", goal: "🎯" };
+  const acctType = (b) => (lists.accountTypes && lists.accountTypes[b]) || ((lists.creditAccounts || []).includes(b) ? "credit" : "debit");
+  const isCredit = (b) => acctType(b) === "credit";
+  const orderedAccounts = () => ACCT_TYPES.flatMap(([t]) => lists.accounts.filter(a => acctType(a) === t));
+  function acctOptgroups(selected, filter = () => true, label = (b) => b) {
+    const opt = (b) => `<option value="${html(b)}"${b === selected ? " selected" : ""}>${html(label(b))}</option>`;
+    return ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t && filter(a)); return xs.length ? `<optgroup label="${label}">${xs.map(opt).join("")}</optgroup>` : ""; }).join("");
+  }
+  function setAcctType(b, t) {
+    lists.accountTypes = lists.accountTypes || {}; lists.accountTypes[b] = t;
+    lists.creditAccounts = lists.accounts.filter(isCredit); // kept for older copies of the app
+  }
+  const GROUP_NAME_FIXES = { "Owed to me": "Debt to me", "Aya's Expenses": "Aya Expenses" };
+  // One-time and every-load fixes to the saved setup. Returns true when something changed.
+  function normalizeLists() {
+    let changed = false;
+    ["accounts", "creditAccounts", "expenseGroups", "income", "rules", "renames", "debts", "debtLog", "debtsDeleted"].forEach(k => { if (!Array.isArray(lists[k])) { lists[k] = []; changed = true; } });
+    if (!lists.accountTypes || typeof lists.accountTypes !== "object") { lists.accountTypes = {}; changed = true; }
+    if ((lists.typesVersion || 0) < 1) {
+      lists.accounts.forEach(a => { if (!lists.accountTypes[a]) lists.accountTypes[a] = lists.creditAccounts.includes(a) ? "credit" : "debit"; });
+      const want = [["GoTyme Main", "ewallet"], ["GCash", "ewallet"], ["GrabPay", "ewallet"], ["Cash", "cash"], ["BDO Unibank", "debit"], ["SPayLater", "credit"],
+        ["Emergency Fund", "goal"], ["Peace of Mind Fund", "goal"], ["Travel Fund", "goal"], ["Excess Fund", "goal"]];
+      want.forEach(([a, t]) => { if (!lists.accounts.includes(a)) lists.accounts.push(a); lists.accountTypes[a] = t; });
+      lists.creditAccounts = lists.accounts.filter(isCredit);
+      lists.typesVersion = 1; changed = true;
+    }
+    lists.accounts.forEach(a => { if (!lists.accountTypes[a]) { lists.accountTypes[a] = /\d{4}/.test(a) ? "credit" : "debit"; changed = true; } });
+    // Category renames and the categories the Debt tab needs.
+    lists.expenseGroups.forEach(g => { if (GROUP_NAME_FIXES[g.name]) { const to = GROUP_NAME_FIXES[g.name]; const twin = lists.expenseGroups.find(x => x.name === to);
+      if (twin && twin !== g) { g.subs.forEach(s => { if (!twin.subs.includes(s)) twin.subs.push(s); }); g._drop = true; } else g.name = to; changed = true; } });
+    if (lists.expenseGroups.some(g => g._drop)) lists.expenseGroups = lists.expenseGroups.filter(g => !g._drop);
+    lists.rules.forEach(x => { if (GROUP_NAME_FIXES[x.group]) { x.group = GROUP_NAME_FIXES[x.group]; changed = true; } (x.parts || []).forEach(t => { if (GROUP_NAME_FIXES[t.group]) { t.group = GROUP_NAME_FIXES[t.group]; changed = true; } }); });
+    if (!lists.expenseGroups.some(g => g.name === "Debt to me")) { lists.expenseGroups.push({ name: "Debt to me", subs: ["Ajie", "Ate", "Nanay", "Ate Anna"] }); changed = true; }
+    if (!lists.expenseGroups.some(g => g.name === "Debt Payments")) { lists.expenseGroups.push({ name: "Debt Payments", subs: [] }); changed = true; }
+    if (!lists.income.includes("Debt Repayment")) { lists.income.push("Debt Repayment"); changed = true; }
+    return changed;
+  }
+  // Fix renamed categories on saved transactions. Calls touch(key) for each month that changed.
+  function normalizeRows(touch) {
+    Object.keys(periods).forEach(k => { let t = false;
+      periods[k].rows.forEach(r => { if (GROUP_NAME_FIXES[r.group]) { r.group = GROUP_NAME_FIXES[r.group]; t = true; } (r.parts || []).forEach(x => { if (GROUP_NAME_FIXES[x.group]) { x.group = GROUP_NAME_FIXES[x.group]; t = true; } }); });
+      if (t) touch(k); });
+  }
+  // Extra setup carried in backups and sync files.
+  function mergeExtraLists(L) {
+    if (!L) return;
+    Object.entries(L.accountTypes || {}).forEach(([a, t]) => { if (!lists.accountTypes[a]) lists.accountTypes[a] = t; });
+    const gone = new Set([...(lists.debtsDeleted || []), ...(L.debtsDeleted || [])]); lists.debtsDeleted = [...gone];
+    ["debts", "debtLog"].forEach(k => {
+      (L[k] || []).forEach(x => { if (gone.has(x.id)) return; const i = lists[k].findIndex(y => y.id === x.id);
+        if (i < 0) lists[k].push(JSON.parse(JSON.stringify(x))); else if ((x.u || 0) > (lists[k][i].u || 0)) lists[k][i] = JSON.parse(JSON.stringify(x)); });
+      lists[k] = lists[k].filter(x => !gone.has(x.id));
+    });
+  }
+  // Debt totals from transactions plus entries made on the Debt tab without a bank.
+  function debtSummary() {
+    const rows = Object.values(periods).flatMap(p => p.rows.filter(isValid).map(r => ({ r, bank: p.bank })));
+    const amt = (x) => parseFloat(cleanAmount(x.amount)) || 0;
+    const mine = (lists.debts || []).filter(d => !(lists.debtsDeleted || []).includes(d.id)).map(d => {
+      const fromTx = rows.filter(({ r }) => r.debtId === d.id).map(({ r, bank }) => ({ date: r.date, amount: amt(r), note: r.description, bank }));
+      const fromLog = (lists.debtLog || []).filter(e => e.kind === "mine" && e.ref === d.id).map(e => ({ date: e.date, amount: amt(e), note: e.note || "Payment", id: e.id }));
+      const pays = [...fromTx, ...fromLog].sort((a, b) => b.date.localeCompare(a.date));
+      const paid = pays.reduce((a, x) => a + x.amount, 0), total = parseFloat(d.total) || 0;
+      return { debt: d, paid, total, remaining: Math.round((total - paid) * 100) / 100, pays };
+    });
+    const g = lists.expenseGroups.find(x => x.name === "Debt to me");
+    const people = [...new Set([...(g ? g.subs : []), ...(lists.debtLog || []).filter(e => e.kind === "theirs").map(e => e.ref), ...rows.filter(({ r }) => r.debtPerson).map(({ r }) => r.debtPerson)])];
+    const theirs = people.map(person => {
+      const items = [];
+      rows.forEach(({ r, bank }) => {
+        if (r.type === "expense") {
+          if (isSplit(r)) r.parts.forEach(x => { if (rowGroup(x) === "Debt to me" && x.category === person) items.push({ date: r.date, amount: amt(x), dir: "lent", note: x.note || r.description, bank }); });
+          else if (rowGroup(r) === "Debt to me" && r.category === person) items.push({ date: r.date, amount: amt(r), dir: "lent", note: r.description, bank });
+        } else if (r.debtPerson === person) items.push({ date: r.date, amount: amt(r), dir: "paid", note: r.description, bank });
+      });
+      (lists.debtLog || []).filter(e => e.kind === "theirs" && e.ref === person).forEach(e => items.push({ date: e.date, amount: amt(e), dir: e.dir, note: e.note || (e.dir === "paid" ? "Paid back" : "Lent"), id: e.id }));
+      items.sort((a, b) => b.date.localeCompare(a.date));
+      const lent = items.filter(x => x.dir === "lent").reduce((a, x) => a + x.amount, 0), paid = items.filter(x => x.dir === "paid").reduce((a, x) => a + x.amount, 0);
+      return { person, lent, paid, balance: Math.round((lent - paid) * 100) / 100, items };
+    });
+    return { mine, theirs };
+  }
+  // ===== end shared core =====
+  const ordered = () => orderedAccounts();
   const period = (bank = ui.bank, month = ui.month, create = false) => {
     const k = keyOf(bank, month);
     if (!periods[k] && create) periods[k] = { bank, month, beginning: null, ending: null, rows: [] };
@@ -454,9 +585,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   // ---------- pickers & balances ----------
   function renderPickers() {
     if (!lists.accounts.includes(ui.bank)) ui.bank = ordered()[0];
-    const opt = (b) => `<option value="${html(b)}"${b === ui.bank ? " selected" : ""}>${html(b)}${period(b, ui.month) ? "  ●" : ""}</option>`;
-    const cc = lists.accounts.filter(isCredit), db = lists.accounts.filter(a => !isCredit(a));
-    $("p-bank").innerHTML = (cc.length ? `<optgroup label="💳 Credit">${cc.map(opt).join("")}</optgroup>` : "") + (db.length ? `<optgroup label="Debit">${db.map(opt).join("")}</optgroup>` : "");
+    $("p-bank").innerHTML = acctOptgroups(ui.bank, () => true, b => b + (period(b, ui.month) ? "  ●" : ""));
     const months = new Set(); for (let i = -1; i <= 24; i++) months.add(shiftMonth(thisMonth(), -i));
     Object.values(periods).forEach(p => months.add(p.month)); months.add(ui.month);
     const has = new Set(Object.values(periods).filter(p => p.bank === ui.bank).map(p => p.month));
@@ -498,11 +627,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   function groupOptions(sel) { return `<option value="">Category…</option>` + lists.expenseGroups.map(g => `<option${g.name === sel ? " selected" : ""}>${html(g.name)}</option>`).join(""); }
   function subOptions(gname, sel) { const g = groupByName(gname); if (!g) return `<option value="">Pick a category first</option>`; if (!g.subs.length) return `<option value="">No subcategories</option>`; return `<option value="">Subcategory…</option>` + g.subs.map(s => `<option${s === sel ? " selected" : ""}>${html(s)}</option>`).join(""); }
   function incomeOptions(sel) { return `<option value="">Category…</option>` + lists.income.map(s => `<option${s === sel ? " selected" : ""}>${html(s)}</option>`).join(""); }
-  function paidOptions(sel) { return `<option value="">Not a transfer</option>` + lists.accounts.filter(a => a !== ui.bank).map(a => `<option value="${html(a)}"${a === sel ? " selected" : ""}>↔ Paid from ${html(a)}</option>`).join(""); }
+  function paidOptions(sel) { return `<option value="">Not a transfer</option>` + acctOptgroups(sel, a => a !== ui.bank, a => "↔ Paid from " + a); }
   function renderAddForm(keep) {
-    { const opt = (b) => `<option value="${html(b)}"${b === ui.bank ? " selected" : ""}>${html(b)}</option>`;
-      const cc = lists.accounts.filter(isCredit), db = lists.accounts.filter(a => !isCredit(a));
-      $("a-bank").innerHTML = (cc.length ? `<optgroup label="💳 Credit">${cc.map(opt).join("")}</optgroup>` : "") + (db.length ? `<optgroup label="Debit">${db.map(opt).join("")}</optgroup>` : ""); }
+    $("a-bank").innerHTML = acctOptgroups(ui.bank);
     document.querySelectorAll("#a-type button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === addType)));
     const g = $("a-group"), s = $("a-sub"), pf = $("a-paid");
     const gv = keep ? g.value : "", sv = keep ? s.value : "";
@@ -697,7 +824,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       (L.rules || []).forEach(x => { if (!lists.rules.some(y => y.key === x.key && y.type === x.type)) lists.rules.push(x); });
       (L.renames || []).forEach(x => { if (!lists.renames.some(y => y.key === x.key)) lists.renames.push(x); });
       if (L.catFormat) lists.catFormat = L.catFormat;
+      mergeExtraLists(L);
     }
+    normalizeLists(); normalizeRows(() => {});
     return { added, updated, skipped };
   }
   function renderBackup() {
@@ -708,7 +837,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 
   // ---------- settings ----------
   function renderSettings() {
-    $("c-accounts").innerHTML = ordered().map(a => `<span class="chip">${html(a)}<button type="button" class="cc${isCredit(a) ? " on" : ""}" data-cc="${html(a)}" aria-label="Credit card">💳</button><button type="button" data-rm-acct="${html(a)}" aria-label="Remove ${html(a)}">×</button></span>`).join("");
+    $("c-accounts").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); return xs.length ? `<div class="acct-head" style="margin:8px 0 4px"><span>${label}</span></div><div class="chips">` + xs.map(a => `<span class="chip">${html(a)}<button type="button" data-type="${html(a)}" aria-label="Change group for ${html(a)}" title="Tap to move to the next group">${TYPE_ICON[t]}</button><button type="button" data-rm-acct="${html(a)}" aria-label="Remove ${html(a)}">×</button></span>`).join("") + `</div>` : ""; }).join("");
     $("c-groups").innerHTML = lists.expenseGroups.map((g, gi) => `<div class="group" data-g="${gi}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-weight:500">${html(g.name)}</strong><button type="button" class="icon" data-rm-group style="font-size:16px">×</button></div>
       <div class="chips">${g.subs.map((s, i) => `<span class="chip">${html(s)}<button type="button" data-rm-sub="${i}">×</button></span>`).join("")}</div>
       <form class="row sub-form" style="margin-top:8px"><input placeholder="Add to ${html(g.name)}"><button class="btn small">Add</button></form></div>`).join("");
@@ -716,9 +845,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     $("c-rules").innerHTML = lists.rules.length ? lists.rules.map((x, i) => `<span class="chip">★ ${html(x.label)} → ${html(ruleCat(x))}<button type="button" data-rm-rule="${i}">×</button></span>`).join("") : `<span class="hint" style="margin:0">Nothing starred yet.</span>`;
     $("c-renames").innerHTML = lists.renames.length ? lists.renames.map((x, i) => `<span class="chip">"${html(x.from)}" → ${html(x.to)}<button type="button" data-rm-ren="${i}">×</button></span>`).join("") : `<span class="hint" style="margin:0">No renames yet.</span>`;
   }
-  document.querySelector("details").addEventListener("click", e => {
+  document.querySelector('[data-pane="settings"] details').addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b || b.type === "submit") return;
-    if (b.dataset.cc) { const a = b.dataset.cc; lists.creditAccounts = isCredit(a) ? lists.creditAccounts.filter(x => x !== a) : [...lists.creditAccounts, a]; }
+    if (b.dataset.type) { const a = b.dataset.type, ks = ACCT_TYPES.map(x => x[0]); const nt = ks[(ks.indexOf(acctType(a)) + 1) % ks.length]; setAcctType(a, nt); flash(`${a} moved to ${ACCT_TYPES.find(x => x[0] === nt)[1]}`); }
     else if (b.dataset.rmAcct) { if (lists.accounts.length <= 1) return; lists.accounts = lists.accounts.filter(x => x !== b.dataset.rmAcct); }
     else if (b.hasAttribute("data-rm-group")) { lists.expenseGroups.splice(+b.closest(".group").dataset.g, 1); }
     else if (b.dataset.rmSub != null) { lists.expenseGroups[+b.closest(".group").dataset.g].subs.splice(+b.dataset.rmSub, 1); }
@@ -728,13 +857,13 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     else return;
     save(); renderAll();
   });
-  document.querySelector("details").addEventListener("submit", e => {
+  document.querySelector('[data-pane="settings"] details').addEventListener("submit", e => {
     e.preventDefault(); const f = e.target, inp = f.querySelector("input"), v = inp.value.trim();
     if (f.id === "f-rename") { const from = $("rn-from").value.trim(), to = $("rn-to").value.trim(), key = compact(from); if (key.length < 3 || !to) { flash("Fill in both boxes."); return; }
       lists.renames = lists.renames.filter(x => x.key !== key); lists.renames.push({ key, from, to }); let n = 0; Object.values(periods).forEach(p => p.rows.forEach(r => { if (renameOne(r)) n++; }));
       $("rn-from").value = ""; $("rn-to").value = ""; save(); renderAll(); flash(`Renamed ${n} existing row${n === 1 ? "" : "s"}.`); return; }
     if (!v) return;
-    if (f.id === "f-acct" && !lists.accounts.includes(v)) { lists.accounts.push(v); if (/\d{4}/.test(v)) lists.creditAccounts.push(v); }
+    if (f.id === "f-acct" && !lists.accounts.includes(v)) { lists.accounts.push(v); setAcctType(v, $("f-acct-type").value || "debit"); }
     if (f.id === "f-group" && !groupByName(v)) lists.expenseGroups.push({ name: v, subs: [] });
     if (f.id === "f-income" && !lists.income.includes(v)) lists.income.push(v);
     if (f.classList.contains("sub-form")) { const g = lists.expenseGroups[+f.closest(".group").dataset.g]; if (!g.subs.includes(v)) g.subs.push(v); }
@@ -842,6 +971,76 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
   $("gd-on").addEventListener("click", () => { gd.on = true; gd.needSignIn = false; gdSave(); signIn(false); });
   $("gd-now").addEventListener("click", () => gdSync());
   $("gd-off").addEventListener("click", () => { gd.on = false; gd.token = null; gdSave(); gdState("Off"); flash("Sync is off on this phone. Your data stays here."); });
+  // ---------- debt tab ----------
+  let debtOpen = null; // which item has its form or history open: "pay:<id>", "hist:<id>", "paid:<name>", "lent:<name>", "thist:<name>"
+  function debtForm(key, label, btn) {
+    return `<form data-form="${html(key)}"><div class="row"><input name="amount" inputmode="decimal" placeholder="₱ 0.00" aria-label="Amount" required><input name="date" type="date" value="${today()}" aria-label="Date"></div>
+      <select name="bank" aria-label="${html(label)}"><option value="">Not from a bank (just note it)</option>${acctOptgroups("", () => true, b => (key.startsWith("paid:") ? "Into " : "From ") + b)}</select>
+      <button class="btn primary small" type="submit">${html(btn)}</button></form>`;
+  }
+  function renderDebt() {
+    const { mine, theirs } = debtSummary();
+    const left = mine.reduce((a, d) => a + Math.max(0, d.remaining), 0);
+    $("dm-total").textContent = mine.length ? peso(left) + " left" : "";
+    $("dm-list").innerHTML = mine.length ? mine.map(d => {
+      const pct = d.total ? Math.min(100, Math.round(d.paid / d.total * 100)) : 0; const id = d.debt.id;
+      return `<div class="debt" data-debt="${html(id)}">
+        <div class="debt-top"><b>${html(d.debt.name)}</b><span class="bal-v${d.remaining <= 0 ? " done" : ""}">${d.remaining <= 0 ? "Paid off ✓" : peso(d.remaining) + " left"}</span></div>
+        <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+        <div class="meta">Paid ${peso(d.paid)} of ${peso(d.total)} · ${pct}%${d.debt.note ? " · " + html(d.debt.note) : ""}</div>
+        <div class="acts"><button type="button" class="btn small primary" data-act="pay">Record payment</button><button type="button" class="btn small" data-act="hist">History (${d.pays.length})</button><button type="button" class="btn ghost small" data-act="del-debt">Delete</button></div>
+        ${debtOpen === "pay:" + id ? debtForm("pay:" + id, "Paid from", "Save payment") : ""}
+        ${debtOpen === "hist:" + id ? `<div class="hist">${d.pays.length ? d.pays.map(x => `<div><span>${short(x.date)} · ${html(x.note)}${x.bank ? " · " + html(x.bank) : ""}</span><span>${peso(x.amount)}${x.id ? ` <button type="button" class="x" data-del-log="${html(x.id)}" aria-label="Delete entry">×</button>` : ""}</span></div>`).join("") : "No payments yet."}</div>` : ""}
+      </div>`; }).join("") : `<p class="empty">No debts added. Use ＋ Add a debt for loans, installments or anything you're paying off.</p>`;
+    const owed = theirs.reduce((a, t) => a + Math.max(0, t.balance), 0);
+    $("dt-total").textContent = theirs.length ? peso(owed) + " owed to you" : "";
+    $("dt-list").innerHTML = theirs.length ? theirs.map(t => { const k = t.person;
+      return `<div class="debt" data-person="${html(k)}">
+        <div class="debt-top"><b>${html(k)}</b><span class="bal-v${t.balance <= 0 ? " done" : ""}">${t.balance > 0 ? "owes " + peso(t.balance) : t.balance < 0 ? "paid " + peso(-t.balance) + " extra" : t.lent ? "All paid ✓" : "Nothing yet"}</span></div>
+        <div class="meta">Lent ${peso(t.lent)} · paid back ${peso(t.paid)}</div>
+        <div class="acts"><button type="button" class="btn small primary" data-act="paid">They paid me</button><button type="button" class="btn small" data-act="lent">I lent more</button><button type="button" class="btn small" data-act="thist">History (${t.items.length})</button></div>
+        ${debtOpen === "paid:" + k ? debtForm("paid:" + k, "Paid into", "Save") : ""}
+        ${debtOpen === "lent:" + k ? debtForm("lent:" + k, "Paid from", "Save") : ""}
+        ${debtOpen === "thist:" + k ? `<div class="hist">${t.items.length ? t.items.map(x => `<div><span>${short(x.date)} · ${x.dir === "paid" ? "paid back" : "lent"} · ${html(x.note)}${x.bank ? " · " + html(x.bank) : ""}</span><span>${x.dir === "paid" ? "−" : "+"}${peso(x.amount)}${x.id ? ` <button type="button" class="x" data-del-log="${html(x.id)}" aria-label="Delete entry">×</button>` : ""}</span></div>`).join("") : "Nothing recorded yet."}</div>` : ""}
+      </div>`; }).join("") : `<p class="empty">Add the people who owe you money.</p>`;
+  }
+  const debtPane = document.querySelector('[data-pane="debt"]');
+  debtPane.addEventListener("click", e => {
+    const del = e.target.closest("[data-del-log]");
+    if (del) { const id = del.dataset.delLog; lists.debtLog = (lists.debtLog || []).filter(x => x.id !== id); lists.debtsDeleted.push(id); save(); renderDebt(); flash("Entry deleted."); return; }
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const box = b.closest(".debt"); const id = box.dataset.debt, person = box.dataset.person; const act = b.dataset.act;
+    if (act === "del-debt") {
+      if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; b.style.color = "var(--expense)"; return; }
+      lists.debts = lists.debts.filter(d => d.id !== id); lists.debtsDeleted.push(id); save(); renderDebt(); flash("Debt deleted. Its bank transactions stay in your accounts."); return;
+    }
+    const key = act + ":" + (id || person); debtOpen = debtOpen === key ? null : key; renderDebt();
+    const f = debtPane.querySelector(`form[data-form="${CSS.escape(key)}"] input[name=amount]`); if (f) f.focus();
+  });
+  debtPane.addEventListener("submit", e => {
+    e.preventDefault(); const f = e.target;
+    if (f.id === "dm-add") { const amt = cleanAmount($("dm-amount").value); const name = $("dm-name").value.trim();
+      if (!name || !amt) { flash("Add a name and the total you owe."); return; }
+      lists.debts.push({ id: uid(), u: Date.now(), name, total: amt, note: $("dm-note").value.trim() }); f.reset(); f.closest("details").open = false; save(); renderDebt(); flash("Debt added."); return; }
+    if (f.id === "dt-add") { const name = $("dt-name").value.trim(); if (!name) return; const g = groupByName("Debt to me"); if (g && !g.subs.includes(name)) g.subs.push(name); f.reset(); save(); renderAll(); return; }
+    const key = f.dataset.form; if (!key) return;
+    const amt = cleanAmount(f.amount.value), date = f.date.value || today(), bank = f.bank.value;
+    if (!amt) { flash("Type the amount first."); return; }
+    const [kind, ref] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+    if (bank) {
+      const r = { id: uid(), u: Date.now(), date, amount: amt, description: "", category: "" };
+      if (kind === "pay") { const d = lists.debts.find(x => x.id === ref); Object.assign(r, { type: "expense", description: `Payment: ${d ? d.name : "debt"}`, group: "Debt Payments", debtId: ref }); }
+      if (kind === "paid") Object.assign(r, { type: "income", description: `${ref} paid back`, category: "Debt Repayment", debtPerson: ref });
+      if (kind === "lent") Object.assign(r, { type: "expense", description: `Lent to ${ref}`, group: "Debt to me", category: ref });
+      const p = period(bank, date.slice(0, 7), true); p.rows.push(r); p.rows.sort((a, b2) => (a.date || "9999").localeCompare(b2.date || "9999"));
+      flash(`Saved, and added to ${bank} ♡`);
+    } else {
+      lists.debtLog.push({ id: uid(), u: Date.now(), kind: kind === "pay" ? "mine" : "theirs", ref, dir: kind === "pay" ? "paid" : kind, date, amount: amt, note: kind === "pay" ? "Payment" : kind === "paid" ? "Paid back" : "Lent" });
+      flash("Saved ♡");
+    }
+    debtOpen = null; save(); renderAll();
+  });
+
   // ---------- tabs ----------
   function showTab(t) {
     ui.tab = t;
@@ -879,27 +1078,39 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       const n = parseFloat(cleanAmount(r.amount));
       if (r.type === "income") { inn += n; ni++; return; }
       out += n; no++;
-      const add = (g, a) => { byCat[g || "No category"] = (byCat[g || "No category"] || 0) + a; };
-      if (isSplit(r)) r.parts.forEach(x => add(rowGroup(x), parseFloat(cleanAmount(x.amount)) || 0)); else add(rowGroup(r), n);
+      // Group → subcategory. Spending saved with only the main category is listed separately so it can be fixed.
+      const add = (x, a) => { const g = rowGroup(x) || "No category"; const grp = groupByName(g);
+        const sub = !rowGroup(x) ? "" : x.category && grp && grp.subs.includes(x.category) ? x.category : grp && grp.subs.length ? "__main" : "";
+        const c = byCat[g] = byCat[g] || { t: 0, subs: {}, fix: null }; c.t += a;
+        if (sub) { c.subs[sub] = (c.subs[sub] || 0) + a; if (sub === "__main" && !c.fix) c.fix = { bank: p.bank, month: p.month }; }
+        if (g === "No category" && !c.fix) c.fix = { bank: p.bank, month: p.month }; };
+      if (isSplit(r)) r.parts.forEach(x => add(x, parseFloat(cleanAmount(x.amount)) || 0)); else add(r, n);
     }));
     $("h-month-label").textContent = monthLabel(m);
     $("h-out").textContent = peso(out); $("h-in").textContent = peso(inn);
     $("h-out-n").textContent = `${no} transaction${no === 1 ? "" : "s"}`; $("h-in-n").textContent = `${ni} transaction${ni === 1 ? "" : "s"}`;
-    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]); const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c[1], 0);
-    if (rest > 0) top.push(["Everything else", rest]);
-    $("h-cats").innerHTML = top.length ? `<div class="acct-head" style="margin-top:2px"><span>Where it went</span></div>` + top.map(([g, a]) => `<div class="catbar"><span>${html(g)}</span><span class="amt">${peso(a)}</span><div class="track"><div class="fill" style="width:${Math.max(3, Math.round(a / out * 100))}%"></div></div></div>`).join("") : `<p class="empty" style="padding:6px">Nothing spent yet this month.</p>`;
+    const cats = Object.entries(byCat).sort((a, b) => b[1].t - a[1].t);
+    $("h-cats").innerHTML = cats.length ? `<div class="acct-head" style="margin-top:2px"><span>Where it went</span></div>` + cats.map(([g, c]) => {
+      const subs = Object.entries(c.subs).sort((a, b) => (a[0] === "__main") - (b[0] === "__main") || b[1] - a[1]);
+      return `<div class="catbar"><span><b style="font-weight:600">${html(g)}</b></span><span class="amt">${peso(c.t)}</span><div class="track"><div class="fill" style="width:${Math.max(3, Math.round(c.t / out * 100))}%"></div></div></div>`
+        + (subs.length ? `<div class="subs">${subs.map(([sb, a]) => sb === "__main"
+            ? `<button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ No subcategory yet</span><span>${peso(a)} ›</span></button>`
+            : `<div class="subline"><span>${html(sb)}</span><span>${peso(a)}</span></div>`).join("")}</div>` : "")
+        + (g === "No category" && c.fix ? `<div class="subs"><button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ Pick categories for these</span><span>›</span></button></div>` : "");
+    }).join("") : `<p class="empty" style="padding:6px">Nothing spent yet this month.</p>`;
     // Accounts
-    let cash = 0, owed = 0;
+    const sums = {};
     const row = (b) => { const x = balanceOf(b); const cc = isCredit(b);
-      if (x && x.v != null) { if (cc) owed += x.v; else cash += x.v; }
+      if (x && x.v != null) sums[acctType(b)] = (sums[acctType(b)] || 0) + x.v;
       const sub = !x ? "No data yet" : x.kind === "statement" ? `${cc ? "Statement" : "End of"} ${monthLabel(x.month)}` : x.kind === "running" ? `So far in ${monthLabel(x.month)}` : `${monthLabel(x.month)} · add a starting balance`;
       return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${html(b)}</span><span class="sub">${sub}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
     // Accounts with no data yet are tucked behind a link so Home stays short.
     const used = (b) => !!latestPeriod(b);
-    const cc = lists.accounts.filter(isCredit).filter(b => showAllAccts || used(b)), db = lists.accounts.filter(a => !isCredit(a)).filter(b => showAllAccts || used(b));
     const hiddenN = lists.accounts.filter(b => !used(b)).length;
-    const debHtml = db.map(row).join(""), ccHtml = cc.map(row).join("");
-    $("h-accounts").innerHTML = (db.length ? `<div class="acct-head"><span>Debit &amp; cash</span><span>${peso(cash)}</span></div>${debHtml}` : "") + (cc.length ? `<div class="acct-head"><span>💳 Credit</span><span>${peso(owed)} owed</span></div>${ccHtml}` : "") + (hiddenN ? `<button type="button" class="btn ghost small" data-home="more" style="margin-top:6px">${showAllAccts ? "Hide accounts with no data" : `Show ${hiddenN} more account${hiddenN === 1 ? "" : "s"} with no data yet`}</button>` : "")
+    const groupsHtml = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t && (showAllAccts || used(a))); if (!xs.length) return "";
+      const body = xs.map(row).join(""); const tot = sums[t] || 0;
+      return `<div class="acct-head"><span>${label}</span><span>${peso(tot)}${t === "credit" ? " owed" : t === "goal" ? " saved" : ""}</span></div>${body}`; }).join("");
+    $("h-accounts").innerHTML = groupsHtml + (hiddenN ? `<button type="button" class="btn ghost small" data-home="more" style="margin-top:6px">${showAllAccts ? "Hide accounts with no data" : `Show ${hiddenN} more account${hiddenN === 1 ? "" : "s"} with no data yet`}</button>` : "")
       + (!lists.accounts.some(used) ? `<p class="empty" style="padding:6px">Add a transaction or load a backup to see your balances here.</p>` : "");
     // Needs a look
     const todo = [];
@@ -919,12 +1130,13 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       : `<p class="empty">No transactions yet. Tap <b>＋ Add</b> below to log your first one.</p>`;
   }
   let showAllAccts = false;
+  $("h-cats").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-accounts").addEventListener("click", e => { if (e.target.closest("[data-home=more]")) { showAllAccts = !showAllAccts; renderHome(); return; } const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-todo-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-recent-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-backup").addEventListener("click", e => { if (e.target.closest("[data-home=backup]")) $("bk-save").click(); });
 
-  function renderAll() { renderHome(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
+  function renderAll() { renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
   load(); renderNet(); renderAll(); showTab(ui.tab || "home");
   gdState(gd.on ? (tokenOk() ? "On" : "Signing in…") : "Off"); autoSync();
