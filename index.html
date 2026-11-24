@@ -108,6 +108,7 @@ details summary::after { content: "Show"; font-size: 13px; color: var(--accent-d
 details[open] summary::after { content: "Hide"; } details[open] summary { margin-bottom: 12px; }
 .group { background: var(--cream); border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 8px; }
 .group .chip { background: var(--surface); }
+.pill-state.sync::before { content: "⟳ "; color: var(--accent-deep); }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--charcoal); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px; max-width: 92vw; text-align: center; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; }
 .toast.show { opacity: 1; }
 .fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 99px; border: 0; background: var(--accent); color: #fff; font-size: 30px; box-shadow: 0 10px 24px -8px rgba(255,145,77,.8); z-index: 5; }
@@ -257,6 +258,13 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     </div>
   </section>
 
+  <section class="card" aria-labelledby="gd-h">
+    <div class="card-head"><h2 id="gd-h">Google Drive sync</h2><span class="tag" id="gd-state">Off</span></div>
+    <p class="hint" style="margin-top:0">Keeps this app and the online Money Diaries page in step through a "Money Diaries Sync" folder in your Google Drive. Syncs when you open the app and shortly after changes, whenever there's internet.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="gd-on">Turn on sync</button><button class="btn" type="button" id="gd-now" hidden>Sync now</button></div>
+    <button class="btn ghost small" type="button" id="gd-off" hidden style="margin-top:6px">Turn off sync on this phone</button>
+  </section>
+
   <section class="card" aria-labelledby="bk-h">
     <div class="card-head"><h2 id="bk-h">Backup &amp; move data</h2></div>
     <p class="hint" style="margin-top:0">Everything lives on this phone. Save a backup now and then, and use it to move data to or from the online Money Diaries page.</p>
@@ -373,6 +381,7 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     lastBackup = s && s.lastBackup || null;
   }
   function save() {
+    if (typeof scheduleSync === "function") try { scheduleSync(); } catch (e) {}
     try { localStorage.setItem(STORE, JSON.stringify({ lists, periods, ui, lastBackup, savedAt: new Date().toISOString() })); }
     catch (e) { flash("Couldn't save. Phone storage may be full."); }
   }
@@ -726,7 +735,103 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
   let toastT;
   function flash(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
   function renderNet() { const on = navigator.onLine; $("net").textContent = on ? "Online" : "Offline"; $("net").className = "pill-state " + (on ? "on" : "off"); }
-  window.addEventListener("online", renderNet); window.addEventListener("offline", renderNet);
+  window.addEventListener("online", () => { renderNet(); autoSync(); }); window.addEventListener("offline", renderNet);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") autoSync(); });
+
+  // ---------- Google Drive sync ----------
+  // Same scheme as the online page: every device writes full snapshots as new files in one Drive folder and merges
+  // the newest snapshot from every other device. This app also tidies old snapshots away.
+  const CLIENT_ID = "77088052824-vu8umjo98o9ra3vtk8b0qhnisnjfph9h.apps.googleusercontent.com";
+  const SCOPE = "https://www.googleapis.com/auth/drive", SYNC_FOLDER = "Money Diaries Sync", FOLDER_MIME = "application/vnd.google-apps.folder";
+  const GKEY = "money-diaries-gdrive";
+  let gd = (() => { try { return JSON.parse(localStorage.getItem(GKEY) || "null"); } catch (e) { return null; } })() || {};
+  if (!gd.deviceId) gd.deviceId = "phone" + Math.random().toString(36).slice(2, 8);
+  const gdSave = () => { try { localStorage.setItem(GKEY, JSON.stringify(gd)); } catch (e) {} };
+  const redirectUri = () => location.origin + location.pathname;
+  const tokenOk = () => gd.token && gd.exp && Date.now() < gd.exp - 60000;
+  let gdBusy = false, gdTimer = null;
+  function gdState(t, kind) { $("gd-state").textContent = t; $("gd-state").className = "tag" + (kind === "err" ? " dup" : kind === "ok" ? " xfer" : "");
+    $("gd-on").hidden = !!gd.on && tokenOk(); $("gd-on").textContent = gd.on ? "Sign in again" : "Turn on sync";
+    $("gd-now").hidden = !(gd.on && tokenOk()); $("gd-off").hidden = !gd.on; }
+  function signIn(silent) {
+    gd.silentTry = Date.now(); gdSave();
+    const q = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: redirectUri(), response_type: "token", scope: SCOPE, include_granted_scopes: "true", state: "md-sync", prompt: silent ? "none" : "consent select_account" });
+    if (gd.email) q.set("login_hint", gd.email);
+    location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + q.toString();
+  }
+  // Coming back from Google: the token (or an error) is in the address after #.
+  (function readReturn() {
+    if (!location.hash || location.hash.indexOf("state=md-sync") < 0) return;
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("access_token")) { gd.token = h.get("access_token"); gd.exp = Date.now() + (parseInt(h.get("expires_in") || "3600", 10) * 1000); gd.on = true; gd.needSignIn = false; }
+    else if (h.get("error")) { gd.needSignIn = true; if (h.get("error") !== "interaction_required" && h.get("error") !== "login_required" && h.get("error") !== "consent_required") gd.lastError = h.get("error"); }
+    gdSave(); history.replaceState(null, "", redirectUri());
+  })();
+  async function api(path, opts = {}) {
+    const r = await fetch(path.startsWith("http") ? path : "https://www.googleapis.com/drive/v3/" + path, { ...opts, headers: { Authorization: "Bearer " + gd.token, ...(opts.headers || {}) } });
+    if (r.status === 401) { gd.token = null; gdSave(); throw Object.assign(new Error("auth"), { auth: true }); }
+    if (!r.ok && r.status !== 204) throw new Error("Drive " + r.status);
+    return r.status === 204 ? null : opts.raw ? r.text() : r.json();
+  }
+  const qs = (o) => new URLSearchParams(o).toString();
+  async function ensureFolder() {
+    if (gd.folderId) return gd.folderId;
+    const f = await api("files?" + qs({ q: `name = '${SYNC_FOLDER}' and mimeType = '${FOLDER_MIME}' and trashed = false`, fields: "files(id,createdTime)", orderBy: "createdTime", pageSize: "10" }));
+    if (f.files && f.files.length) { gd.folderId = f.files[0].id; gdSave(); return gd.folderId; }
+    const c = await api("files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: SYNC_FOLDER, mimeType: FOLDER_MIME }) });
+    gd.folderId = c.id; gdSave(); return gd.folderId;
+  }
+  const snapshot = () => JSON.stringify({ app: "money-diaries", version: 1, from: "phone", exportedAt: new Date().toISOString(), lists, periods });
+  const dataHash = () => { const t = JSON.stringify({ lists, periods }); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h + ":" + t.length; };
+  async function gdSync() {
+    if (!gd.on || !tokenOk() || !navigator.onLine || gdBusy) return;
+    gdBusy = true; gdState("Syncing…"); $("net").classList.add("sync");
+    try {
+      const fid = await ensureFolder();
+      const list = await api("files?" + qs({ q: `'${fid}' in parents and trashed = false`, fields: "files(id,name,createdTime)", orderBy: "createdTime desc", pageSize: "200" }));
+      const files = (list.files || []).filter(f => /^md-sync_/.test(f.name));
+      const seen = new Set(gd.seen || []); const byDev = {};
+      files.forEach(f => { const dev = f.name.split("_")[1]; (byDev[dev] = byDev[dev] || []).push(f); });
+      let added = 0, updated = 0;
+      for (const [dev, fs] of Object.entries(byDev)) {
+        if (dev === gd.deviceId) { fs.forEach(f => seen.add(f.id)); continue; }
+        const newest = fs[0]; if (seen.has(newest.id)) continue;
+        const txt = await api("files/" + newest.id + "?alt=media", { raw: true });
+        let d = null; try { d = JSON.parse(txt); } catch (e) {}
+        if (d && d.app === "money-diaries" && d.periods) { const res = mergeBackup(d); added += res.added; updated += res.updated; }
+        seen.add(newest.id);
+      }
+      if (added || updated) { save(); renderAll(); }
+      // Upload a snapshot only when this phone's data differs from the last one it sent.
+      const h = dataHash();
+      if (h !== gd.lastHash) {
+        const ts = new Date().toISOString().replace(/[:.]/g, "-"); const boundary = "mdsync" + Date.now();
+        const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: `md-sync_${gd.deviceId}_${ts}.json`, parents: [fid], mimeType: "application/json" })}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${snapshot()}\r\n--${boundary}--`;
+        const up = await api("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + boundary }, body });
+        if (up && up.id) seen.add(up.id); gd.lastHash = h;
+      }
+      // Tidy: keep the two newest snapshots from each device.
+      let removed = 0;
+      for (const fs of Object.values(byDev)) for (const f of fs.slice(2)) { if (removed >= 15) break; try { await api("files/" + f.id, { method: "DELETE" }); removed++; } catch (e) {} }
+      gd.seen = [...seen].slice(-300); gd.lastSync = Date.now(); gdSave();
+      gdState(`Synced ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` + (added || updated ? ` · ${added} new, ${updated} updated` : ""), "ok");
+      if (added || updated) flash(`Synced from Drive: ${added} new, ${updated} updated ♡`);
+    } catch (e) {
+      console.warn("sync error", e && e.message); if (e.auth) gdState("Sign-in expired. Tap Sign in again", "err"); else gdState("Couldn't reach Drive. Will try again later", "err");
+    }
+    gdBusy = false; $("net").classList.remove("sync");
+  }
+  function autoSync() {
+    if (!gd.on || !navigator.onLine) return;
+    if (tokenOk()) { gdSync(); return; }
+    // Token is short-lived: quietly fetch a new one (a quick hop to Google and back), at most every 10 minutes.
+    if (!gd.needSignIn && (!gd.silentTry || Date.now() - gd.silentTry > 10 * 60000)) signIn(true);
+    else gdState("Tap Sign in again to sync", "err");
+  }
+  function scheduleSync() { if (!gd.on) return; clearTimeout(gdTimer); gdTimer = setTimeout(() => { if (tokenOk()) gdSync(); }, 15000); }
+  $("gd-on").addEventListener("click", () => { gd.on = true; gd.needSignIn = false; gdSave(); signIn(false); });
+  $("gd-now").addEventListener("click", () => gdSync());
+  $("gd-off").addEventListener("click", () => { gd.on = false; gd.token = null; gdSave(); gdState("Off"); flash("Sync is off on this phone. Your data stays here."); });
   // ---------- tabs ----------
   function showTab(t) {
     ui.tab = t;
@@ -812,6 +917,7 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
   function renderAll() { renderHome(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
   load(); renderNet(); renderAll(); showTab(ui.tab || "home");
+  gdState(gd.on ? (tokenOk() ? "On" : "Signing in…") : "Off"); autoSync();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
