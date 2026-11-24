@@ -111,6 +111,47 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--charcoal); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px; max-width: 92vw; text-align: center; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; }
 .toast.show { opacity: 1; }
 .fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 99px; border: 0; background: var(--accent); color: #fff; font-size: 30px; box-shadow: 0 10px 24px -8px rgba(255,145,77,.8); z-index: 5; }
+/* Tabs */
+.pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+.pane[hidden] { display: none; }
+.fab { display: none; }
+.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
+.tabbar button { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
+.tabbar button span { font-size: 21px; line-height: 1.1; }
+.tabbar button[aria-current="page"] { color: var(--accent-deep); font-weight: 500; }
+.tabbar .tab-add span { background: var(--accent); color: #fff; width: 40px; height: 32px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; }
+.tabbar .tab-add[aria-current="page"] span { background: var(--accent-deep); }
+/* Home */
+.hello { padding: 2px 4px 0; }
+.hi { margin: 0; font-size: 22px; font-weight: 500; color: var(--charcoal); }
+.today { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.notice { background: var(--warn-soft); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; font-size: 13.5px; display: flex; align-items: center; gap: 10px; }
+.notice .btn { margin-left: auto; flex: 0 0 auto; }
+.month-card .bal { margin-bottom: 12px; }
+.catbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13.5px; margin-top: 8px; }
+.catbar .track { grid-column: 1 / -1; height: 7px; border-radius: 99px; background: var(--cream); overflow: hidden; }
+.catbar .fill { height: 100%; border-radius: 99px; background: var(--accent); }
+.catbar .amt { font-variant-numeric: tabular-nums; color: var(--charcoal); }
+.acct { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
+.acct:last-child { border-bottom: 0; }
+.acct .nm { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct .sub { font-size: 12px; color: var(--muted); grid-column: 1; }
+.acct .val { grid-row: 1 / span 2; grid-column: 2; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+.acct .val small { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.acct-head { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 12px 0 2px; display: flex; justify-content: space-between; }
+.acct-head:first-child { margin-top: 0; }
+.rec { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
+.rec:last-child { border-bottom: 0; }
+.rec .d { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec .m { font-size: 12px; color: var(--muted); }
+.rec .a { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 500; }
+.rec .a.inc { color: var(--income); } .rec .a.exp { color: var(--charcoal); }
+.todo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 14px; width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
+.todo:last-child { border-bottom: 0; }
+.todo .go { color: var(--accent-deep); font-size: 13px; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -122,6 +163,33 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     <span class="pill-state" id="net">Offline-ready</span>
   </header>
 
+  <div class="pane" data-pane="home">
+    <section class="hello"><p class="hi" id="h-hi"></p><p class="today" id="h-date"></p></section>
+    <div class="notice" id="h-backup" hidden></div>
+    <section class="card month-card" aria-labelledby="h-month">
+      <div class="card-head"><h2 id="h-month">This month</h2><span class="tag" id="h-month-label"></span></div>
+      <div class="bal">
+        <div class="cell"><span class="k">Money out</span><span class="v exp" id="h-out">₱ 0.00</span><span class="n" id="h-out-n"></span></div>
+        <div class="cell"><span class="k">Money in</span><span class="v inc" id="h-in">₱ 0.00</span><span class="n" id="h-in-n"></span></div>
+      </div>
+      <div id="h-cats"></div>
+      <p class="hint" style="margin-bottom:0">All banks, by transaction date. Transfers between your own accounts aren't counted.</p>
+    </section>
+    <section class="card" aria-labelledby="h-acc">
+      <div class="card-head"><h2 id="h-acc">My accounts</h2></div>
+      <div id="h-accounts"></div>
+    </section>
+    <section class="card" aria-labelledby="h-todo" id="h-todo-card" hidden>
+      <div class="card-head"><h2 id="h-todo">Needs a look</h2></div>
+      <div id="h-todo-list"></div>
+    </section>
+    <section class="card" aria-labelledby="h-recent">
+      <div class="card-head"><h2 id="h-recent">Recent</h2></div>
+      <div id="h-recent-list"></div>
+    </section>
+  </div>
+
+  <div class="pane" data-pane="accounts" hidden>
   <section class="picker" aria-label="Choose bank and month">
     <label for="p-bank">Which bank?<select id="p-bank"></select></label>
     <label for="p-month"><span id="p-month-label">Month</span>
@@ -137,8 +205,11 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     <div class="recon"><span class="badge na" id="recon">Add both balances so I can check the math</span><span class="formula" id="formula"></span></div>
   </section>
 
+  </div>
+  <div class="pane" data-pane="add" hidden>
   <section class="card" id="add-card" aria-labelledby="add-h">
     <div class="card-head"><h2 id="add-h">Add a transaction</h2></div>
+    <label for="a-bank" style="margin-bottom:10px">Bank<select id="a-bank"></select></label>
     <form class="add" id="add-form" autocomplete="off">
       <div class="seg" role="group" aria-label="Type" id="a-type">
         <button type="button" data-v="expense" aria-pressed="true">Money out</button>
@@ -158,11 +229,15 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     </form>
   </section>
 
+  </div>
+  <div class="pane" data-pane="accounts-list" hidden>
   <section class="card" aria-labelledby="tx-h">
     <div class="card-head"><h2 id="tx-h">Where the money went</h2><span class="tag" id="tx-count"></span></div>
     <div id="tx-list"></div>
   </section>
 
+  </div>
+  <div class="pane" data-pane="export" hidden>
   <section class="card" aria-labelledby="csv-h">
     <div class="card-head"><h2 id="csv-h">Ready for Tarsi</h2></div>
     <div style="display:grid;gap:8px">
@@ -190,8 +265,10 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     <p class="hint" id="bk-last"></p>
   </section>
 
+  </div>
+  <div class="pane" data-pane="settings" hidden>
   <section class="card">
-    <details>
+    <details open>
       <summary>My banks &amp; categories</summary>
       <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Banks</h3>
       <div class="chips" id="c-accounts"></div>
@@ -210,8 +287,16 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
       <p class="hint">Tap 💳 to move a bank between Credit and Debit. Names go straight into the CSV, so keep them matching Tarsi.</p>
     </details>
   </section>
+  </div>
 </div>
 <button class="fab" type="button" id="fab" aria-label="Add a transaction">+</button>
+<nav class="tabbar" aria-label="Sections">
+  <button type="button" data-tab="home"><span>⌂</span>Home</button>
+  <button type="button" data-tab="accounts"><span>▤</span>Accounts</button>
+  <button type="button" data-tab="add" class="tab-add"><span>＋</span>Add</button>
+  <button type="button" data-tab="export"><span>⇪</span>Export</button>
+  <button type="button" data-tab="settings"><span>⚙</span>Settings</button>
+</nav>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -396,6 +481,9 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
   function incomeOptions(sel) { return `<option value="">Category…</option>` + lists.income.map(s => `<option${s === sel ? " selected" : ""}>${html(s)}</option>`).join(""); }
   function paidOptions(sel) { return `<option value="">Not a transfer</option>` + lists.accounts.filter(a => a !== ui.bank).map(a => `<option value="${html(a)}"${a === sel ? " selected" : ""}>↔ Paid from ${html(a)}</option>`).join(""); }
   function renderAddForm(keep) {
+    { const opt = (b) => `<option value="${html(b)}"${b === ui.bank ? " selected" : ""}>${html(b)}</option>`;
+      const cc = lists.accounts.filter(isCredit), db = lists.accounts.filter(a => !isCredit(a));
+      $("a-bank").innerHTML = (cc.length ? `<optgroup label="💳 Credit">${cc.map(opt).join("")}</optgroup>` : "") + (db.length ? `<optgroup label="Debit">${db.map(opt).join("")}</optgroup>` : ""); }
     document.querySelectorAll("#a-type button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === addType)));
     const g = $("a-group"), s = $("a-sub"), pf = $("a-paid");
     const gv = keep ? g.value : "", sv = keep ? s.value : "";
@@ -405,6 +493,7 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     if (!$("a-date").value) $("a-date").value = isCredit(ui.bank) || ui.month === thisMonth() ? today() : ui.month + "-01";
     $("desc-list").innerHTML = [...new Set(Object.values(periods).flatMap(p => p.rows.map(r => r.description)).filter(Boolean))].slice(-80).map(d => `<option value="${html(d)}">`).join("");
   }
+  $("a-bank").addEventListener("change", e => { ui.bank = e.target.value; save(); renderPickers(); renderBalances(); renderList(); renderAddForm(true); });
   $("a-type").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; addType = b.dataset.v; renderAddForm(false); });
   $("a-group").addEventListener("change", () => { if (addType === "expense") renderAddForm(true); });
   $("a-desc").addEventListener("change", () => {
@@ -429,10 +518,10 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
     period(ui.bank, month).rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
     save();
     $("a-amount").value = ""; $("a-desc").value = "";
-    if (month !== ui.month) { flash(`Added to ${monthLabel(month)}`); } else flash("Added ♡");
+    flash(`Added to ${ui.bank}${month !== ui.month ? ", " + monthLabel(month) : ""} ♡`);
     renderAll(); $("a-amount").focus();
   });
-  $("fab").addEventListener("click", () => { $("add-card").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $("a-amount").focus(), 350); });
+  $("fab").addEventListener("click", () => showTab("add"));
 
   // ---------- transaction list ----------
   function renderList() {
@@ -638,9 +727,91 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
   function flash(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
   function renderNet() { const on = navigator.onLine; $("net").textContent = on ? "Online" : "Offline"; $("net").className = "pill-state " + (on ? "on" : "off"); }
   window.addEventListener("online", renderNet); window.addEventListener("offline", renderNet);
-  function renderAll() { renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
+  // ---------- tabs ----------
+  function showTab(t) {
+    ui.tab = t;
+    document.querySelectorAll(".pane").forEach(p => { p.hidden = !(p.dataset.pane === t || (t === "accounts" && p.dataset.pane === "accounts-list")); });
+    document.querySelectorAll(".tabbar button").forEach(b => { if (b.dataset.tab === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+    save(); window.scrollTo(0, 0);
+    if (t === "add") setTimeout(() => $("a-amount").focus(), 150);
+  }
+  document.querySelector(".tabbar").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) { showTab(b.dataset.tab); if (b.dataset.tab === "home") renderHome(); } });
+  const openAccount = (bank, month) => { ui.bank = bank; ui.month = month; renderAll(); showTab("accounts"); };
 
-  load(); renderNet(); renderAll();
+  // ---------- home ----------
+  const short = (d) => new Date(d + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  function latestPeriod(bank) { return Object.values(periods).filter(p => p.bank === bank && (p.rows.length || p.ending != null || p.beginning != null)).sort((a, b) => b.month.localeCompare(a.month))[0] || null; }
+  function balanceOf(bank) {
+    const p = latestPeriod(bank); if (!p) return null;
+    if (p.ending != null) return { v: p.ending, month: p.month, kind: "statement" };
+    const b0 = beginOf(bank, p.month); if (b0 == null) return { v: null, month: p.month };
+    const t = totals(p); return { v: isCredit(bank) ? b0 + t.exp - t.add : b0 + t.add - t.exp, month: p.month, kind: "running" };
+  }
+  function renderHome() {
+    const now = new Date(), m = thisMonth();
+    const hr = now.getHours();
+    $("h-hi").textContent = (hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening") + ", Grace ♡";
+    $("h-date").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    // Backup nudge
+    const days = lastBackup ? Math.floor((Date.now() - new Date(lastBackup)) / 86400000) : null;
+    const hasData = Object.values(periods).some(p => p.rows.length);
+    $("h-backup").hidden = !hasData || (days != null && days < 7);
+    $("h-backup").innerHTML = `<span>${days == null ? "You haven't saved a backup yet." : `Last backup was ${days} days ago.`}</span><button class="btn small primary" type="button" data-home="backup">Save now</button>`;
+    // This month, all banks, by transaction date; own-account transfers left out.
+    const links = transferLinks(); let out = 0, inn = 0, no = 0, ni = 0; const byCat = {};
+    Object.values(periods).forEach(p => p.rows.forEach(r => {
+      if (!isValid(r) || r.date.slice(0, 7) !== m || r.paidFrom || links.src.has(r.id)) return;
+      const n = parseFloat(cleanAmount(r.amount));
+      if (r.type === "income") { inn += n; ni++; return; }
+      out += n; no++;
+      const add = (g, a) => { byCat[g || "No category"] = (byCat[g || "No category"] || 0) + a; };
+      if (isSplit(r)) r.parts.forEach(x => add(rowGroup(x), parseFloat(cleanAmount(x.amount)) || 0)); else add(rowGroup(r), n);
+    }));
+    $("h-month-label").textContent = monthLabel(m);
+    $("h-out").textContent = peso(out); $("h-in").textContent = peso(inn);
+    $("h-out-n").textContent = `${no} transaction${no === 1 ? "" : "s"}`; $("h-in-n").textContent = `${ni} transaction${ni === 1 ? "" : "s"}`;
+    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]); const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c[1], 0);
+    if (rest > 0) top.push(["Everything else", rest]);
+    $("h-cats").innerHTML = top.length ? `<div class="acct-head" style="margin-top:2px"><span>Where it went</span></div>` + top.map(([g, a]) => `<div class="catbar"><span>${html(g)}</span><span class="amt">${peso(a)}</span><div class="track"><div class="fill" style="width:${Math.max(3, Math.round(a / out * 100))}%"></div></div></div>`).join("") : `<p class="empty" style="padding:6px">Nothing spent yet this month.</p>`;
+    // Accounts
+    let cash = 0, owed = 0;
+    const row = (b) => { const x = balanceOf(b); const cc = isCredit(b);
+      if (x && x.v != null) { if (cc) owed += x.v; else cash += x.v; }
+      const sub = !x ? "No data yet" : x.kind === "statement" ? `${cc ? "Statement" : "End of"} ${monthLabel(x.month)}` : x.kind === "running" ? `So far in ${monthLabel(x.month)}` : `${monthLabel(x.month)} · add a starting balance`;
+      return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${html(b)}</span><span class="sub">${sub}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
+    // Accounts with no data yet are tucked behind a link so Home stays short.
+    const used = (b) => !!latestPeriod(b);
+    const cc = lists.accounts.filter(isCredit).filter(b => showAllAccts || used(b)), db = lists.accounts.filter(a => !isCredit(a)).filter(b => showAllAccts || used(b));
+    const hiddenN = lists.accounts.filter(b => !used(b)).length;
+    const debHtml = db.map(row).join(""), ccHtml = cc.map(row).join("");
+    $("h-accounts").innerHTML = (db.length ? `<div class="acct-head"><span>Debit &amp; cash</span><span>${peso(cash)}</span></div>${debHtml}` : "") + (cc.length ? `<div class="acct-head"><span>💳 Credit</span><span>${peso(owed)} owed</span></div>${ccHtml}` : "") + (hiddenN ? `<button type="button" class="btn ghost small" data-home="more" style="margin-top:6px">${showAllAccts ? "Hide accounts with no data" : `Show ${hiddenN} more account${hiddenN === 1 ? "" : "s"} with no data yet`}</button>` : "")
+      + (!lists.accounts.some(used) ? `<p class="empty" style="padding:6px">Add a transaction or load a backup to see your balances here.</p>` : "");
+    // Needs a look
+    const todo = [];
+    Object.values(periods).sort((a, b) => b.month.localeCompare(a.month)).forEach(p => {
+      const n = p.rows.filter(r => needsCat(r) && !links.src.has(r.id)).length;
+      if (n) todo.push({ text: `${n} without a category · ${p.bank}, ${monthLabel(p.month)}`, bank: p.bank, month: p.month });
+      const b0 = beginOf(p.bank, p.month);
+      if (b0 != null && p.ending != null) { const t = totals(p); const e = isCredit(p.bank) ? b0 + t.exp - t.add : b0 + t.add - t.exp;
+        if (Math.abs(p.ending - e) >= 0.01) todo.push({ text: `Off by ${peso(Math.abs(p.ending - e))} · ${p.bank}, ${monthLabel(p.month)}`, bank: p.bank, month: p.month }); }
+    });
+    $("h-todo-card").hidden = !todo.length;
+    $("h-todo-list").innerHTML = todo.slice(0, 6).map(t => `<button type="button" class="todo" data-bank="${html(t.bank)}" data-month="${t.month}"><span>${html(t.text)}</span><span class="go">Open ›</span></button>`).join("");
+    // Recent
+    const all = Object.values(periods).flatMap(p => p.rows.filter(isValid).map(r => ({ r, p })));
+    all.sort((a, b) => b.r.date.localeCompare(a.r.date) || (b.r.u || 0) - (a.r.u || 0));
+    $("h-recent-list").innerHTML = all.length ? all.slice(0, 6).map(({ r, p }) => `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}"><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)}${r.paidFrom || links.src.has(r.id) ? " · transfer" : ""}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${peso(parseFloat(cleanAmount(r.amount)))}</span></button>`).join("")
+      : `<p class="empty">No transactions yet. Tap <b>＋ Add</b> below to log your first one.</p>`;
+  }
+  let showAllAccts = false;
+  $("h-accounts").addEventListener("click", e => { if (e.target.closest("[data-home=more]")) { showAllAccts = !showAllAccts; renderHome(); return; } const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
+  $("h-todo-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
+  $("h-recent-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
+  $("h-backup").addEventListener("click", e => { if (e.target.closest("[data-home=backup]")) $("bk-save").click(); });
+
+  function renderAll() { renderHome(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
+
+  load(); renderNet(); renderAll(); showTab(ui.tab || "home");
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
