@@ -13,13 +13,19 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-/* The G Diaries brand, offline: system fonts only, so nothing has to load from the internet. */
+/* The G Diaries brand. Rounded fonts ship with the app (fonts/), so they work offline too. */
+@font-face { font-family: "Fredoka"; src: url("fonts/fredoka-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Fredoka"; src: url("fonts/fredoka-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("fonts/nunito-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("fonts/nunito-latin-600-normal.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("fonts/nunito-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 :root {
   --bg: #fffefa; --cream: #fffbec; --surface: #ffffff; --ink: #3a3a3a; --charcoal: #545454; --muted: #8f8a80; --line: #f1ead6;
   --accent: #ff914d; --accent-deep: #e8732c; --accent-soft: #fff1e6; --star: #fdc84d;
   --expense: #e8732c; --income: #5a9e7c; --warn: #b8860b; --warn-soft: #fff6d6;
   --shadow: 0 1px 2px rgba(84,84,84,.04), 0 12px 28px -18px rgba(84,70,40,.25);
-  --font: "Jost", "Futura", "Avenir Next", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font: "Nunito", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fredoka", "Nunito", -apple-system, system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -153,6 +159,10 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .todo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 14px; width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
 .todo:last-child { border-bottom: 0; }
 .todo .go { color: var(--accent-deep); font-size: 13px; white-space: nowrap; }
+/* Rounded display face for titles, amounts and tabs */
+h1, h2, .hi, .cell .v, .cell input, .amt-big, .tx .amt, .tabbar button, details summary, .picker select, .acct .val, .rec .a, .catbar .amt, .badge { font-family: var(--font-display); }
+h1 { font-weight: 600; letter-spacing: .03em; } h2, details summary { font-weight: 500; } .hi { font-weight: 600; }
+body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
