@@ -53,6 +53,7 @@ select:disabled { opacity: .55; }
 .btn { font: inherit; font-weight: 500; font-size: 15px; border-radius: 99px; padding: 10px 18px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.small { padding: 7px 13px; font-size: 13.5px; }
+.btn.danger { color: var(--expense); border-color: color-mix(in srgb, var(--expense) 35%, var(--line)); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn:disabled { opacity: .45; }
 .hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
@@ -98,6 +99,10 @@ select:disabled { opacity: .55; }
 .icon { border: 0; background: transparent; font-size: 20px; padding: 6px 8px; color: var(--muted); border-radius: 99px; }
 .icon.star.on { color: #e9b52f; }
 .nocat { color: var(--accent-deep); font-style: italic; }
+.split-box .split-head { margin-bottom: 6px; } .split-box .left { color: var(--warn); }
+.split-box .part { display: grid; gap: 6px; padding: 8px 0; border-top: 1px dashed var(--line); }
+.split-box .part input, .split-box .part select { background: var(--surface); padding: 8px 10px; }
+.split-acts { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
 .split-box { background: var(--cream); border-radius: 12px; padding: 8px 10px; font-size: 13px; }
 .empty { text-align: center; color: var(--muted); padding: 22px 6px; }
 
@@ -126,7 +131,7 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(6, 1fr);
   background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
-.tabbar button { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
+.tabbar button { border: 0; background: transparent; font: inherit; font-size: 10.5px; white-space: nowrap; letter-spacing: -.01em; min-width: 0; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
 .tabbar button span { font-size: 21px; line-height: 1.1; }
 .tabbar button[aria-current="page"] { color: var(--accent-deep); font-weight: 500; }
 .tabbar .tab-add span { background: var(--accent); color: #fff; width: 40px; height: 32px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; }
@@ -135,13 +140,14 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .day { margin-bottom: 12px; }
 .day-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; font-weight: 700; color: var(--charcoal); padding: 4px 2px 6px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
 .day-head .o { color: var(--expense); font-family: var(--font-display); font-weight: 500; } .day-head .i { color: var(--income); font-family: var(--font-display); font-weight: 500; margin-left: 8px; }
-.txc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 7px 2px; font: inherit; color: inherit; }
+.txc .ic { grid-row: 1 / span 2; align-self: center; width: 34px; height: 34px; border-radius: 12px; background: var(--cream); display: grid; place-items: center; font-size: 18px; }
+.txc { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0 10px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 7px 2px; font: inherit; color: inherit; }
 .txc:last-child { border-bottom: 0; }
 .txc .d { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .txc .st { color: #e9b52f; font-size: 12px; }
 .txc .a { font-family: var(--font-display); font-weight: 500; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .txc .a.inc { color: var(--income); }
-.txc .c { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txc .c { grid-column: 2 / -1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .txc .c.miss { color: var(--accent-deep); font-weight: 700; }
 .txc .dupx { color: var(--expense); }
 .txc.bad { background: var(--warn-soft); }
@@ -186,11 +192,13 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .acct .val small { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
 .acct-head { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 12px 0 2px; display: flex; justify-content: space-between; }
 .acct-head:first-child { margin-top: 0; }
-.rec { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
+.rec .ic { grid-row: 1 / span 2; align-self: center; width: 32px; height: 32px; border-radius: 11px; background: var(--cream); display: grid; place-items: center; font-size: 17px; }
+.rec .m { grid-column: 2; }
+.rec { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
 .rec:last-child { border-bottom: 0; }
 .rec .d { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec .m { font-size: 12px; color: var(--muted); }
-.rec .a { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 500; }
+.rec .a { grid-row: 1 / span 2; grid-column: 3; align-self: center; font-variant-numeric: tabular-nums; font-weight: 500; }
 .rec .a.inc { color: var(--income); } .rec .a.exp { color: var(--charcoal); }
 .todo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 14px; width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; }
 .todo:last-child { border-bottom: 0; }
@@ -368,7 +376,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 <button class="fab" type="button" id="fab" aria-label="Add a transaction">+</button>
 <nav class="tabbar" aria-label="Sections">
   <button type="button" data-tab="home"><span>⌂</span>Home</button>
-  <button type="button" data-tab="accounts"><span>▤</span>Accounts</button>
+  <button type="button" data-tab="accounts"><span>▤</span>Transactions</button>
   <button type="button" data-tab="add" class="tab-add"><span>＋</span>Add</button>
   <button type="button" data-tab="debt"><span>⇄</span>Debt</button>
   <button type="button" data-tab="export"><span>⇪</span>Export</button>
@@ -542,6 +550,37 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     });
     return { mine, theirs };
   }
+  // Cute icons per category and subcategory (anything new falls back to its category's icon, then a tag).
+  const CAT_ICONS = {
+    "Food": "🍜", "Coffee & Pastries": "☕", "Fastfood": "🍔", "Groceries": "🛒", "Liquor": "🍷", "Palengke": "🥬", "Restaurant": "🍽️", "Rice": "🍚", "Supplies": "🧴",
+    "Transport": "🚌", "Bus": "🚌", "FX": "🚐", "Grab": "🚕", "Jeep": "🚙", "MC Taxi": "🏍️",
+    "Bills": "🧾", "Electricity": "⚡", "Gas": "🔥", "HOA Dues": "🏘️", "Internet": "📶", "Phone load": "📱", "Water": "💧",
+    "Shopping": "🛍️", "Accessories": "💍", "Bag": "👜", "Clothing": "👗", "Electronics": "🎧", "Footwear": "👟", "Plants": "🪴", "Shipping": "📦", "Travel Needs": "🧳", "Workout Stuff": "🏋️",
+    "Fun": "🎈", "Books": "📚", "Games": "🎮", "Massage": "💆", "Movies": "🎬", "Museums": "🖼️",
+    "Health": "🩺", "Doctor": "🩺", "Lab Tests": "🧪", "Pharmacy": "💊", "Vitamins": "🍊",
+    "Home": "🏡", "Appliances": "🔌", "Celebrations": "🎉", "Furnitures": "🛋️", "Home Decor": "🕯️", "Home Improvements": "🔨", "Housewares": "🍳", "Outdoor & Garden": "🌿", "Plant Materials": "🌱", "Repairs and Maintenance": "🔧", "Tools": "🧰",
+    "Grace's Fam": "👨‍👩‍👧", "Grace's Fam Budget": "💰", "Grace's Fam Celebrations": "🎂", "Grace's Fam Grocery": "🛒", "Grace's Fam Health": "💊", "Grace's Fam Internet": "📶", "Grace's Fam Netflix": "🍿", "Grace's Fam Treats": "🍰", "Grace's Fam Vacation": "🏖️",
+    "Ajie's Fam": "👪", "Ajie's Fam Budget": "💰", "Ajie's Fam Celebrations": "🎂", "Ajie's Fam Treats": "🍰",
+    "Aya Expenses": "🧸", "Aya Activities": "🎨", "Aya Clothing": "👕", "Aya Entertainment": "🎠", "Aya Health & Meds": "🩹", "Aya Supplies": "🖍️", "Aya Toys": "🧸", "Babysitter": "🤱", "Food & Milk": "🍼",
+    "Aya's Education": "🎒", "Books & Learning Materials": "📖", "Kumon": "✏️", "Other Expenses": "🗂️", "School Celebrations": "🎈", "School Needs": "🎒", "School Supplies": "✂️", "School Uniform": "👔", "Tuition fees": "🏫",
+    "Personal Care": "💅", "Bodycare": "🧴", "Hair": "💇", "Make-up": "💄", "Nails": "💅", "Skincare": "🧖",
+    "Investments": "📈", "House": "🏠", "Jewelries": "💎", "Land": "🌾", "MP2": "🐷", "Vehicle": "🚗",
+    "Government Payments": "🏛️", "PagIBIG": "🏠", "PhilHealth": "🏥", "SSS": "🪪",
+    "Subscriptions": "📺", "ChatGPT": "🤖", "Claude": "✨", "Digital Products": "💾", "Disney": "🏰", "Google One": "☁️", "Grab / Food Panda": "🛵", "iCloud": "☁️", "Netflix": "🍿", "Other Streaming": "📺", "Other Subscriptions": "🔁", "YouTube": "▶️",
+    "Work Expenses": "💼", "Equipment": "🖥️", "Personnel": "👥", "Professional Development": "🎓", "Stationary": "🖊️",
+    "Vacation": "🏝️", "Accommodation": "🏨", "Food and drinks": "🍹", "Land and water transpo": "⛴️", "Plane fare": "✈️", "Souvenirs": "🎁", "Tour packages": "🗺️",
+    "Maintenance": "🔧", "Parking fees": "🅿️", "Petrol": "⛽",
+    "Gifts and Donations": "🎁", "Birthday": "🎂", "Charity": "💗", "Christening": "👶", "Christmas Giving": "🎄", "Funeral": "🕊️", "Marriage": "💒",
+    "Insurance": "🛡️", "Home Fire/MRI Premiums": "🛡️", "Fees": "💸", "Refunded Expenses": "↩️", "Pass-through Expense": "🔁", "Debt to me": "🤝", "Debt Payments": "🏦",
+    "Salary": "💵", "Freelance": "💻", "Transfers In": "📥", "Interest": "📈", "Refund": "↩️", "Payment": "💳", "Gift": "🎁", "Cashback": "🪙", "Other Income": "💰", "Debt Repayment": "🤝", "Transfer": "↔️"
+  };
+  // Group-specific overrides where a name means something different under another category.
+  const CAT_ICONS_BY_GROUP = { "Vehicle|Maintenance": "🔧", "Investments|Vehicle": "🚗", "Debt to me|*": "👤" };
+  function catIcon(group, sub) {
+    if (sub && CAT_ICONS_BY_GROUP[group + "|" + sub]) return CAT_ICONS_BY_GROUP[group + "|" + sub];
+    if (sub && CAT_ICONS_BY_GROUP[group + "|*"]) return CAT_ICONS_BY_GROUP[group + "|*"];
+    return (sub && CAT_ICONS[sub]) || (group && CAT_ICONS[group]) || "🏷️";
+  }
   // ===== end shared core =====
   const ordered = () => orderedAccounts();
   const period = (bank = ui.bank, month = ui.month, create = false) => {
@@ -639,9 +678,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 
   // ---------- quick add ----------
   let addType = "expense";
-  function groupOptions(sel) { return `<option value="">Category…</option>` + lists.expenseGroups.map(g => `<option${g.name === sel ? " selected" : ""}>${html(g.name)}</option>`).join(""); }
-  function subOptions(gname, sel) { const g = groupByName(gname); if (!g) return `<option value="">Pick a category first</option>`; if (!g.subs.length) return `<option value="">No subcategories</option>`; return `<option value="">Subcategory…</option>` + g.subs.map(s => `<option${s === sel ? " selected" : ""}>${html(s)}</option>`).join(""); }
-  function incomeOptions(sel) { return `<option value="">Category…</option>` + lists.income.map(s => `<option${s === sel ? " selected" : ""}>${html(s)}</option>`).join(""); }
+  function groupOptions(sel) { return `<option value="">Category…</option>` + lists.expenseGroups.map(g => `<option value="${html(g.name)}"${g.name === sel ? " selected" : ""}>${catIcon(g.name)} ${html(g.name)}</option>`).join(""); }
+  function subOptions(gname, sel) { const g = groupByName(gname); if (!g) return `<option value="">Pick a category first</option>`; if (!g.subs.length) return `<option value="">No subcategories</option>`; return `<option value="">Subcategory…</option>` + g.subs.map(x => `<option value="${html(x)}"${x === sel ? " selected" : ""}>${catIcon(g.name, x)} ${html(x)}</option>`).join(""); }
+  function incomeOptions(sel) { return `<option value="">Category…</option>` + lists.income.map(x => `<option value="${html(x)}"${x === sel ? " selected" : ""}>${catIcon("", x)} ${html(x)}</option>`).join(""); }
   function paidOptions(sel) { return `<option value="">Not a transfer</option>` + acctOptgroups(sel, a => a !== ui.bank, a => "↔ Paid from " + a); }
   function renderAddForm(keep) {
     $("a-bank").innerHTML = acctOptgroups(ui.bank);
@@ -709,7 +748,9 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       : r.type === "income" ? (r.category || "") : [rowGroup(r), r.category].filter(Boolean).join(" › ");
     const missing = !xferTo && needsCat(r);
     const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—";
+    const ic = xferTo || r.paidFrom ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : missing ? "❔" : catIcon(rowGroup(r), r.category);
     return `<button type="button" class="txc${isValid(r) ? "" : " bad"}" data-open="${r.id}">
+      <span class="ic" aria-hidden="true">${ic}</span>
       <span class="d">${html(r.description || "No description")}${findRule(r) ? ' <span class="st">★</span>' : ""}</span>
       <span class="a ${r.type === "income" ? "inc" : ""}">${r.type === "income" ? "+" : "−"}${amt}</span>
       <span class="c${missing ? " miss" : ""}">${missing ? "Pick a category" : html(cat)}${dup ? ' <span class="dupx">· ⚠ duplicate?</span>' : ""}</span>
@@ -720,7 +761,16 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
       const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : r.amount;
       let cats;
       if (xferTo) cats = `<span class="tag xfer">↔ Payment to ${html(xferTo)}. Exported as a transfer</span>`;
-      else if (isSplit(r)) cats = `<div class="split-box">✂ Split into ${r.parts.length}: ${r.parts.map(x => `${html(x.category || rowGroup(x) || "?")} ${peso(parseFloat(cleanAmount(x.amount) || 0))}`).join(" · ")}<br><span class="tag">Edit splits on the online page</span></div>`;
+      else if (isSplit(r)) { const left = splitLeft(r);
+        cats = `<div class="split-box"><div class="split-head">✂ Split into ${r.parts.length} parts${Math.abs(left) >= 0.005 ? ` · <b class="left">${left > 0 ? peso(left) + " left to assign" : peso(-left) + " too much"}</b>` : " · adds up ✓"}</div>`
+          + r.parts.map((x, i) => { const g = r.type === "income" ? "" : rowGroup(x); const grp = groupByName(g);
+            return `<div class="part" data-i="${i}">
+              <div class="row"><input data-pf="amount" inputmode="decimal" value="${html(cleanAmount(x.amount) ? peso(parseFloat(cleanAmount(x.amount))) : x.amount || "")}" placeholder="₱ 0.00" aria-label="Part ${i + 1} amount"><button type="button" class="btn small danger" data-act="del-part" style="flex:0 0 auto">Remove part</button></div>
+              <input data-pf="note" value="${html(x.note || "")}" placeholder="What's this part?" aria-label="Part ${i + 1} description">
+              ${r.type === "income" ? `<select data-pf="income-cat">${incomeOptions(x.category)}</select>`
+                : `<div class="row"><select data-pf="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>`}
+            </div>`; }).join("")
+          + `<div class="split-acts"><button type="button" class="btn small" data-act="add-part">+ Add part</button>${left > 0.004 ? `<button type="button" class="btn small" data-act="fill-left">Put ${peso(left)} in the last part</button>` : ""}<button type="button" class="btn ghost small" data-act="unsplit">Undo split</button></div></div>`; }
       else if (r.type === "income") cats = `<div class="row"><select data-f="income-cat" class="${lists.income.includes(r.category) || r.paidFrom ? "" : "nocat"}"${r.paidFrom ? " disabled" : ""}>${r.paidFrom ? "<option>Transfer</option>" : incomeOptions(r.category)}</select>${isCredit(ui.bank) ? `<select data-f="paidFrom">${paidOptions(r.paidFrom)}</select>` : ""}</div>`;
       else { const g = rowGroup(r); const grp = groupByName(g);
         cats = `<div class="row"><select data-f="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div>`; }
@@ -731,11 +781,21 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
         <div class="tx-top">${dup ? `<span class="tag dup">⚠ Looks like a duplicate</span>` : r.paidFrom ? `<span class="tag xfer">↔ Transfer from ${html(r.paidFrom)}</span>` : ""}
           <span style="margin-left:auto"></span>
           <button type="button" class="icon star${rule ? " on" : ""}" data-act="star" aria-label="${rule ? "Forget this vendor" : "Remember this category"}">${rule ? "★" : "☆"}</button>
-          <button type="button" class="icon" data-act="del" aria-label="Delete">×</button>
+          ${isSplit(r) || xferTo ? "" : `<button type="button" class="btn small" data-act="split">✂ Split</button>`}
+          <button type="button" class="btn small danger" data-act="del">Remove</button>
           <button type="button" class="btn small" data-act="done">Done</button></div>
       </div>`;
   }
+  const splitLeft = (r) => Math.round(((parseFloat(cleanAmount(r.amount)) || 0) - r.parts.reduce((t, x) => t + (parseFloat(cleanAmount(x.amount)) || 0), 0)) * 100) / 100;
   $("tx-list").addEventListener("change", e => {
+    const pf = e.target.dataset.pf;
+    if (pf) { const card = e.target.closest(".tx"); const p = period(), r = p.rows.find(x => x.id === card.dataset.id); const x = r && r.parts[+e.target.closest(".part").dataset.i]; if (!x) return;
+      const v = e.target.value; r.u = Date.now();
+      if (pf === "amount") x.amount = cleanAmount(v) || v;
+      if (pf === "note") x.note = v;
+      if (pf === "group") { x.group = v; const g = groupByName(v); if (!g || !g.subs.includes(x.category)) x.category = ""; if (!v) delete x.group; }
+      if (pf === "sub" || pf === "income-cat") x.category = v;
+      save(); renderAll(); return; }
     const card = e.target.closest(".tx"), f = e.target.dataset.f; if (!card || !f) return;
     const p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     const v = e.target.value; r.u = Date.now();
@@ -757,8 +817,19 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     if (b.dataset.act === "done") { openTx = null; renderList(); return; }
     const card = b.closest(".tx"), p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     if (b.dataset.act === "del") {
-      if (delArmed !== r.id) { delArmed = r.id; b.textContent = "Delete?"; b.style.fontSize = "13px"; b.style.color = "var(--expense)"; setTimeout(() => { if (delArmed === r.id) { delArmed = null; renderList(); } }, 3000); return; }
-      delArmed = null; p.rows = p.rows.filter(x => x !== r); (p.deleted = p.deleted || []).push(r.id); flash("Deleted.");
+      if (delArmed !== r.id) { delArmed = r.id; b.textContent = "Tap again to remove"; setTimeout(() => { if (delArmed === r.id) { delArmed = null; renderList(); } }, 3000); return; }
+      delArmed = null; openTx = null; p.rows = p.rows.filter(x => x !== r); (p.deleted = p.deleted || []).push(r.id); flash("Removed.");
+    }
+    if (["split", "add-part", "fill-left", "unsplit", "del-part"].includes(b.dataset.act)) {
+      const act = b.dataset.act; r.u = Date.now();
+      if (act === "split") { if (!cleanAmount(r.amount)) { flash("Add the amount first."); return; }
+        const first = { amount: cleanAmount(r.amount), category: r.category || "", note: r.description || "" }; if (r.group) first.group = r.group;
+        r.parts = [first, { amount: "", category: "", note: r.description || "" }]; flash("Split! Type how much goes to each part ✂"); }
+      if (act === "add-part") r.parts.push({ amount: splitLeft(r) > 0 ? cleanAmount(splitLeft(r)) || "" : "", category: "", note: r.description || "" });
+      if (act === "fill-left") { const last = r.parts[r.parts.length - 1]; last.amount = cleanAmount((parseFloat(cleanAmount(last.amount)) || 0) + splitLeft(r)) || last.amount; }
+      if (act === "del-part") r.parts.splice(+b.closest(".part").dataset.i, 1);
+      if (act === "unsplit" || r.parts.length < 2) { const keep = r.parts[0]; if (keep && act !== "unsplit") { r.category = keep.category || ""; if (keep.group) r.group = keep.group; else delete r.group; } delete r.parts; }
+      save(); renderAll(); return;
     }
     if (b.dataset.act === "flip") { r.type = r.type === "expense" ? "income" : "expense"; r.category = ""; delete r.group; if (r.type !== "income") delete r.paidFrom; r.u = Date.now(); }
     if (b.dataset.act === "star") {
@@ -1133,10 +1204,10 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     const cats = Object.entries(byCat).sort((a, b) => b[1].t - a[1].t);
     $("h-cats").innerHTML = cats.length ? `<div class="acct-head" style="margin-top:2px"><span>Where it went</span></div>` + cats.map(([g, c]) => {
       const subs = Object.entries(c.subs).sort((a, b) => (a[0] === "__main") - (b[0] === "__main") || b[1] - a[1]);
-      return `<div class="catbar"><span><b style="font-weight:600">${html(g)}</b></span><span class="amt">${peso(c.t)}</span><div class="track"><div class="fill" style="width:${Math.max(3, Math.round(c.t / out * 100))}%"></div></div></div>`
+      return `<div class="catbar"><span>${catIcon(g)} <b style="font-weight:600">${html(g)}</b></span><span class="amt">${peso(c.t)}</span><div class="track"><div class="fill" style="width:${Math.max(3, Math.round(c.t / out * 100))}%"></div></div></div>`
         + (subs.length ? `<div class="subs">${subs.map(([sb, a]) => sb === "__main"
             ? `<button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ No subcategory yet</span><span>${peso(a)} ›</span></button>`
-            : `<div class="subline"><span>${html(sb)}</span><span>${peso(a)}</span></div>`).join("")}</div>` : "")
+            : `<div class="subline"><span>${catIcon(g, sb)} ${html(sb)}</span><span>${peso(a)}</span></div>`).join("")}</div>` : "")
         + (g === "No category" && c.fix ? `<div class="subs"><button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ Pick categories for these</span><span>›</span></button></div>` : "");
     }).join("") : `<p class="empty" style="padding:6px">Nothing spent yet this month.</p>`;
     // Accounts
@@ -1167,7 +1238,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
     // Recent
     const all = Object.values(periods).flatMap(p => p.rows.filter(isValid).map(r => ({ r, p })));
     all.sort((a, b) => b.r.date.localeCompare(a.r.date) || (b.r.u || 0) - (a.r.u || 0));
-    $("h-recent-list").innerHTML = all.length ? all.slice(0, 6).map(({ r, p }) => `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}"><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)}${r.paidFrom || links.src.has(r.id) ? " · transfer" : ""}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${peso(parseFloat(cleanAmount(r.amount)))}</span></button>`).join("")
+    $("h-recent-list").innerHTML = all.length ? all.slice(0, 6).map(({ r, p }) => `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}"><span class="ic" aria-hidden="true">${r.paidFrom || links.src.has(r.id) ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : catIcon(rowGroup(r), r.category)}</span><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)}${r.paidFrom || links.src.has(r.id) ? " · transfer" : ""}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${peso(parseFloat(cleanAmount(r.amount)))}</span></button>`).join("")
       : `<p class="empty">No transactions yet. Tap <b>＋ Add</b> below to log your first one.</p>`;
   }
   let showAllAccts = false;
