@@ -128,10 +128,10 @@ details[open] summary::after { content: "Hide"; } details[open] summary { margin
 .pane[hidden] { display: none; }
 .fab { display: none; }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(6, 1fr);
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(7, 1fr);
   background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
-.tabbar button { border: 0; background: transparent; font: inherit; font-size: 10.5px; white-space: nowrap; letter-spacing: -.01em; min-width: 0; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
+.tabbar button { border: 0; background: transparent; font: inherit; font-size: 9.5px; white-space: nowrap; letter-spacing: -.01em; min-width: 0; color: var(--muted); display: grid; justify-items: center; gap: 1px; padding: 4px 0; border-radius: 12px; }
 .tabbar button span { font-size: 21px; line-height: 1.1; }
 .tabbar button[aria-current="page"] { color: var(--accent-deep); font-weight: 500; }
 .tabbar .tab-add span { background: var(--accent); color: #fff; width: 40px; height: 32px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; }
@@ -329,6 +329,27 @@ body.sheet-open { overflow: hidden; }
 .cat-card > .cat-add { padding-left: 0; }
 .del-warn { margin: 0; background: var(--warn-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; color: var(--charcoal); }
 .btn.danger-fill { background: var(--expense); color: #fff; border-color: var(--expense); }
+.bud-top { display: grid; gap: 8px; margin-bottom: 10px; }
+.bud-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 24px; }
+.bud-sum { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 14px 16px; display: grid; gap: 10px; }
+.bud-sum:empty { display: none; }
+.bud-big { display: grid; gap: 2px; } .bud-big .k { color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.bud-big .v { font-family: var(--font-display); font-weight: 600; font-size: 26px; font-variant-numeric: tabular-nums; } .bud-big .v small { font-size: 15px; color: var(--muted); font-weight: 500; }
+.bud-big .n { font-size: 13px; color: var(--income); font-weight: 700; } .bud-big .over { color: var(--expense); }
+.bud-bar, .bud-row .bb { height: 10px; border-radius: 99px; background: var(--cream); overflow: hidden; display: block; }
+.bud-bar i, .bud-row .bb i { display: block; height: 100%; border-radius: 99px; background: var(--income); }
+.bud-bar i.over, .bud-row .bb i.over { background: var(--expense); } .bud-row .bb i.near { background: var(--star); }
+.bud-card { padding: 4px 14px; }
+.bud-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 5px 12px; align-items: center; width: 100%; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--line); padding: 14px 0; }
+.bud-row:last-child { border-bottom: 0; }
+.bud-row .cb { grid-row: 1 / span 4; align-self: start; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; }
+.bud-row .cb .appic { width: 24px; height: 24px; }
+.bud-row .bt { display: flex; gap: 8px; align-items: center; min-width: 0; } .bud-row .bt b { font-weight: 700; font-size: 15.5px; }
+.bud-row .bf { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.bud-row .tagp { flex: none; font-size: 11px; font-weight: 700; color: var(--accent-deep); background: var(--accent-soft); border-radius: 99px; padding: 2px 8px; }
+.bud-row .bv { font-family: var(--font-display); font-weight: 600; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; } .bud-row .bv small { color: var(--muted); font-weight: 500; font-size: 13px; }
+.bud-row .bb { grid-column: 2; } .bud-row .bv { font-size: 17px; }
+.bud-row .bn { font-size: 12.5px; color: var(--muted); min-width: 0; } .bud-row .bl { font-size: 12.5px; font-weight: 700; color: var(--income); white-space: nowrap; text-align: right; } .bud-row .bl.over { color: var(--expense); }
 </style>
 </head>
 <body>
@@ -462,6 +483,16 @@ body.sheet-open { overflow: hidden; }
   </section>
 
   </div>
+  <div class="pane" data-pane="budget" hidden>
+    <section class="bud-top">
+      <div class="cat-headrow"><h2 class="bud-title">Budgets</h2><button type="button" class="cat-plus" id="bud-plus" aria-label="Add a budget">＋</button></div>
+      <div class="cat-tabs" role="tablist" id="bud-view"><button type="button" role="tab" data-bv="month" class="on">Month</button><button type="button" role="tab" data-bv="year">Year</button></div>
+      <div class="month-strip" id="bud-strip" role="tablist" aria-label="Period"></div>
+      <div class="bud-sum" id="bud-sum"></div>
+    </section>
+    <div id="bud-list"></div>
+    <p class="hint" style="text-align:center">Spending from all banks, by transaction date. Transfers between your accounts aren't counted. Yearly budgets add up from January to December.</p>
+  </div>
   <div class="pane" data-pane="debt" hidden>
     <section class="card" aria-labelledby="dm-h">
       <div class="card-head"><h2 id="dm-h">My debt</h2><span class="debt-total" id="dm-total"></span></div>
@@ -511,6 +542,7 @@ body.sheet-open { overflow: hidden; }
   <button type="button" data-tab="home"><span>⌂</span>Home</button>
   <button type="button" data-tab="accounts"><span>▤</span>Transactions</button>
   <button type="button" data-tab="add" class="tab-add"><span>＋</span>Add</button>
+  <button type="button" data-tab="budget"><span><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:2px auto 3px"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.4 6.4"/></svg></span>Budget</button>
   <button type="button" data-tab="debt"><span>⇄</span>Debt</button>
   <button type="button" data-tab="export"><span>⇪</span>Export</button>
   <button type="button" data-tab="settings"><span>⚙</span>Settings</button>
@@ -679,7 +711,7 @@ body.sheet-open { overflow: hidden; }
   // One-time and every-load fixes to the saved setup. Returns true when something changed.
   function normalizeLists() {
     let changed = false;
-    ["accounts", "creditAccounts", "expenseGroups", "income", "rules", "renames", "debts", "debtLog", "debtsDeleted"].forEach(k => { if (!Array.isArray(lists[k])) { lists[k] = []; changed = true; } });
+    ["accounts", "creditAccounts", "expenseGroups", "income", "rules", "renames", "debts", "debtLog", "debtsDeleted", "budgets"].forEach(k => { if (!Array.isArray(lists[k])) { lists[k] = []; changed = true; } });
     if (!lists.accountTypes || typeof lists.accountTypes !== "object") { lists.accountTypes = {}; changed = true; }
     if ((lists.typesVersion || 0) < 1) {
       lists.accounts.forEach(a => { if (!lists.accountTypes[a]) lists.accountTypes[a] = lists.creditAccounts.includes(a) ? "credit" : "debit"; });
@@ -721,7 +753,7 @@ body.sheet-open { overflow: hidden; }
     (L.catChanges || []).forEach(c => { if (!catLog().some(x => x.id === c.id)) catLog().push(JSON.parse(JSON.stringify(c))); });
     lists.creditLimits = lists.creditLimits || {}; Object.entries(L.creditLimits || {}).forEach(([a, v]) => { if (lists.creditLimits[a] == null) lists.creditLimits[a] = v; });
     const gone = new Set([...(lists.debtsDeleted || []), ...(L.debtsDeleted || [])]); lists.debtsDeleted = [...gone];
-    ["debts", "debtLog"].forEach(k => {
+    ["debts", "debtLog", "budgets"].forEach(k => { if (!Array.isArray(lists[k])) lists[k] = [];
       (L[k] || []).forEach(x => { if (gone.has(x.id)) return; const i = lists[k].findIndex(y => y.id === x.id);
         if (i < 0) lists[k].push(JSON.parse(JSON.stringify(x))); else if ((x.u || 0) > (lists[k][i].u || 0)) lists[k][i] = JSON.parse(JSON.stringify(x)); });
       lists[k] = lists[k].filter(x => !gone.has(x.id));
@@ -1152,6 +1184,8 @@ body.sheet-open { overflow: hidden; }
   }
   let openTx = null, instOpen = null;
   // Soft colour per category so each icon sits in its own bubble.
+  // "Grace's Fam Health" under Grace's Fam reads as just "Health"; other names stay whole ("Home Improvements").
+  const shortSub = (g, s) => s && g && /'s Fam$/.test(g) && s.startsWith(g + " ") ? s.slice(g.length + 1) : s;
   const BUBBLES = ["#ffe0c7", "#fff0bd", "#d9f0e2", "#d8e9ff", "#f3dcf7", "#ffd6d6", "#e4e0ff", "#d3f1f1", "#f0e6d6", "#e2f3c8"];
   const bubble = (g) => { let h = 0; for (const c of String(g || "")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return BUBBLES[h % BUBBLES.length]; };
   function txCompact(r, links, dup) {
@@ -1159,7 +1193,7 @@ body.sheet-open { overflow: hidden; }
     const title = r.sentTo ? `Transfer to ${r.sentTo}` : r.paidFrom ? `Transfer from ${r.paidFrom}`
       : isSplit(r) ? `Split • ${[...new Set(r.parts.map(x => r.type === "income" ? x.category : rowGroup(x)).filter(Boolean))].join(", ") || r.parts.length + " parts"}`
       : missing ? "Pick a category" : r.type === "income" ? (r.category || "Money in")
-      : [g, r.category && g && r.category.startsWith(g + " ") ? r.category.slice(g.length + 1) : r.category].filter(Boolean).join(" • ");
+      : [g, shortSub(g, r.category)].filter(Boolean).join(" • ");
     const sub = [isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
     const n = parseFloat(cleanAmount(r.amount));
     const amt = isNaN(n) ? "—" : r.type === "income" ? peso(n) : peso(-n);
@@ -1421,7 +1455,7 @@ body.sheet-open { overflow: hidden; }
   // ---------- categories: tap to rename, hold to delete, ＋ to add ----------
   let catTab = "expense";
   const PROTECTED = { g: ["Debt to me", "Debt Payments"], i: ["Debt Repayment"] };
-  const catRowHtml = (k, g, n, icon, bg, sub) => `<button type="button" class="cat-row${sub ? " sub" : ""}" data-k="${k}" data-g="${html(g)}" data-n="${html(n)}"><span class="cb" style="background:${bg}">${icon}</span><span class="nm">${html(sub && n.startsWith(g + " ") ? n.slice(g.length + 1) : n)}</span><span class="chev" aria-hidden="true">›</span></button>`;
+  const catRowHtml = (k, g, n, icon, bg, sub) => `<button type="button" class="cat-row${sub ? " sub" : ""}" data-k="${k}" data-g="${html(g)}" data-n="${html(n)}"><span class="cb" style="background:${bg}">${icon}</span><span class="nm">${html(sub ? shortSub(g, n) : n)}</span><span class="chev" aria-hidden="true">›</span></button>`;
   function renderCats() {
     document.querySelectorAll("#cat-tabs [data-ct]").forEach(b => { b.classList.toggle("on", b.dataset.ct === catTab); b.setAttribute("aria-selected", String(b.dataset.ct === catTab)); });
     $("cat-list").innerHTML = catTab === "income"
@@ -1682,6 +1716,96 @@ body.sheet-open { overflow: hidden; }
     debtOpen = null; save(); renderAll();
   });
 
+  // ---------- budgets ----------
+  // lists.budgets: { id, u, group, sub, amount, period: "monthly" | "yearly" }. Yearly runs January to December.
+  let budView = "month", budMonth = null, budYear = null;
+  // Money spent on one category in a date range (all banks; split parts count separately; transfers and installment purchases left out,
+  // their monthly charges count instead, same as Home).
+  function spentOn(group, sub, from, to) {
+    let n = 0;
+    Object.values(periods).forEach(p => p.rows.forEach(r => {
+      if (!isValid(r) || r.type !== "expense" || r.sentTo || isInst(r) || r.date < from || r.date > to) return;
+      const hit = (x) => rowGroup(x) === group && (!sub || x.category === sub);
+      if (isSplit(r)) r.parts.forEach(x => { if (hit(x)) n += parseFloat(cleanAmount(x.amount)) || 0; });
+      else if (hit(r)) n += parseFloat(cleanAmount(r.amount)) || 0;
+    }));
+    return Math.round(n * 100) / 100;
+  }
+  const monthEnd = (m) => { const [y, mo] = m.split("-").map(Number); return m + "-" + String(new Date(y, mo, 0).getDate()).padStart(2, "0"); };
+  function renderBudget() {
+    const tm = thisMonth(); budMonth = budMonth || tm; budYear = budYear || tm.slice(0, 4);
+    document.querySelectorAll("#bud-view [data-bv]").forEach(b => { b.classList.toggle("on", b.dataset.bv === budView); b.setAttribute("aria-selected", String(b.dataset.bv === budView)); });
+    const strip = $("bud-strip");
+    if (budView === "month") {
+      const ms = new Set([shiftMonth(tm, 1)]); for (let i = 0; i < 14; i++) ms.add(shiftMonth(tm, -i)); ms.add(budMonth);
+      strip.innerHTML = [...ms].sort().map(m => `<button type="button" class="mtab${m === budMonth ? " on" : ""}" data-bm="${m}">${m === tm ? "This month" : m === shiftMonth(tm, -1) ? "Last month" : new Date(m + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}</button>`).join("");
+    } else {
+      const ys = new Set([tm.slice(0, 4), String(+tm.slice(0, 4) - 1), String(+tm.slice(0, 4) - 2), budYear]);
+      strip.innerHTML = [...ys].sort().map(y => `<button type="button" class="mtab${y === budYear ? " on" : ""}" data-by="${y}">${y === tm.slice(0, 4) ? "This year" : y}</button>`).join("");
+    }
+    const on = strip.querySelector(".mtab.on"); if (on) requestAnimationFrame(() => { strip.scrollLeft = on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2; });
+    const bs = (lists.budgets || []).filter(b => !(lists.debtsDeleted || []).includes(b.id));
+    if (!bs.length) { $("bud-sum").innerHTML = ""; $("bud-list").innerHTML = `<div class="daycard"><p class="empty">No budgets yet. Tap ＋ to set one for a subcategory, monthly or yearly.</p></div>`; return; }
+    const y = budView === "month" ? budMonth.slice(0, 4) : budYear, m = budView === "month" ? budMonth : null;
+    // Through the picked month for yearly budgets; for the year view, through December (or today for this year).
+    const lastM = m || (y === tm.slice(0, 4) ? tm : y + "-12");
+    const items = bs.map(b => {
+      const yearly = b.period === "yearly", amt = parseFloat(b.amount) || 0;
+      let spent, limit, note = "";
+      if (yearly) { spent = spentOn(b.group, b.sub, y + "-01-01", monthEnd(lastM)); limit = amt;
+        const mo = m ? spentOn(b.group, b.sub, m + "-01", monthEnd(m)) : 0;
+        note = m ? `${peso(mo)} this month · Jan–${new Date(m + "-01T00:00").toLocaleDateString("en-US", { month: "short" })} ${y}` : lastM.slice(5) === "12" ? `Jan–Dec ${y}` : `Jan–${new Date(lastM + "-01T00:00").toLocaleDateString("en-US", { month: "short" })} ${y} so far`; }
+      else if (m) { spent = spentOn(b.group, b.sub, m + "-01", monthEnd(m)); limit = amt; note = monthLabel(m); }
+      else { const months = []; for (let i = 1; i <= +lastM.slice(5); i++) months.push(y + "-" + String(i).padStart(2, "0"));
+        const per = months.map(x => spentOn(b.group, b.sub, x + "-01", monthEnd(x))); spent = Math.round(per.reduce((a, v) => a + v, 0) * 100) / 100; limit = amt * months.length;
+        const over = per.filter(v => v > amt + 0.004).length; note = `${peso(amt)} a month × ${months.length}` + (over ? ` · over in ${over} month${over === 1 ? "" : "s"}` : ""); }
+      return { b, yearly, spent, limit, note, left: Math.round((limit - spent) * 100) / 100 };
+    });
+    const tS = items.reduce((a, x) => a + x.spent, 0), tL = items.reduce((a, x) => a + x.limit, 0), overN = items.filter(x => x.left < 0).length;
+    $("bud-sum").innerHTML = `<div class="bud-big"><span class="k">${m ? monthLabel(m) : y}</span><span class="v">${peso(tS)} <small>of ${peso(tL)}</small></span>
+      <span class="n">${overN ? `<b class="over">${overN} over budget</b>` : "All within budget ✓"}</span></div><div class="bud-bar"><i style="width:${Math.min(100, tL ? tS / tL * 100 : 0)}%" class="${tS > tL ? "over" : ""}"></i></div>`;
+    items.sort((a, b) => ((b.left < 0) - (a.left < 0)) || (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)));
+    $("bud-list").innerHTML = `<div class="daycard bud-card">` + items.map(({ b, yearly, spent, limit, note, left }) => {
+      const pct = limit ? spent / limit * 100 : 0, g = b.group;
+      const name = [g, shortSub(g, b.sub)].filter(Boolean).join(" • ");
+      return `<button type="button" class="bud-row" data-bud="${html(b.id)}"><span class="cb" style="background:${bubble(g)}">${b.sub ? catIconHtml(g, b.sub) : catIcon(g)}</span>
+        <span class="bt"><b>${html(name)}</b><span class="tagp">${yearly ? "Yearly" : "Monthly"}</span></span>
+        <span class="bv">${peso(spent)} <small>/ ${peso(limit)}</small></span>
+        <span class="bb"><i style="width:${Math.min(100, pct)}%" class="${pct > 100 ? "over" : pct >= 85 ? "near" : ""}"></i></span>
+        <span class="bf"><span class="bn">${html(note)}</span><span class="bl ${left < 0 ? "over" : ""}">${left < 0 ? `${peso(-left)} over` : `${peso(left)} left`}</span></span></button>`; }).join("") + `</div>`;
+  }
+  function budgetTargets(sel) {
+    return lists.expenseGroups.filter(g => g.name !== "Adjustment").map(g => g.subs.length
+      ? `<optgroup label="${html(g.name)}">${g.subs.map(s => { const v = JSON.stringify({ group: g.name, sub: s }); return `<option value='${html(v)}'${sel === v ? " selected" : ""}>${html(s)}</option>`; }).join("")}</optgroup>`
+      : (() => { const v = JSON.stringify({ group: g.name, sub: "" }); return `<option value='${html(v)}'${sel === v ? " selected" : ""}>${html(g.name)}</option>`; })()).join("");
+  }
+  function budgetModal(b) {
+    const sel = b ? JSON.stringify({ group: b.group, sub: b.sub || "" }) : "";
+    const f = catModal(`<h3>${b ? "Edit budget" : "New budget"}</h3>
+      <label class="k">For<select name="cat" required><option value="">Pick a subcategory…</option>${budgetTargets(sel)}</select></label>
+      <label class="k">Budget<input name="amt" inputmode="decimal" placeholder="₱ 0.00" value="${b ? html(peso(parseFloat(b.amount) || 0)) : ""}" required></label>
+      <div class="cat-tabs" role="radiogroup" style="margin:0"><button type="button" data-per="monthly" class="${!b || b.period !== "yearly" ? "on" : ""}">Monthly</button><button type="button" data-per="yearly" class="${b && b.period === "yearly" ? "on" : ""}">Yearly</button></div>
+      <p class="hint" style="margin:0" id="per-hint"></p>
+      <div class="modal-acts">${b ? `<button type="button" class="btn ghost" data-del-bud style="margin-right:auto;color:var(--expense)">Delete</button>` : ""}<button type="button" class="btn ghost" data-x>Cancel</button><button class="btn primary">Save</button></div>`);
+    let per = b && b.period === "yearly" ? "yearly" : "monthly";
+    const hint = () => { f.querySelector("#per-hint").textContent = per === "yearly" ? "Adds up every month from January, resets each new year." : "Starts fresh every month."; };
+    hint();
+    f.addEventListener("click", e => { const t = e.target.closest("[data-per]"); if (t) { per = t.dataset.per; f.querySelectorAll("[data-per]").forEach(x => x.classList.toggle("on", x === t)); hint(); }
+      const d = e.target.closest("[data-del-bud]"); if (d) { if (d.dataset.armed !== "1") { d.dataset.armed = "1"; d.textContent = "Tap again to delete"; return; }
+        lists.budgets = lists.budgets.filter(x => x.id !== b.id); lists.debtsDeleted.push(b.id); closeCatModal(); save(); renderBudget(); flash("Budget deleted."); } });
+    f.addEventListener("submit", e => { e.preventDefault(); const amt = num(f.amt.value);
+      if (!f.cat.value) { flash("Pick a subcategory first."); return; } if (!amt || amt <= 0) { flash("Type the budget amount."); return; }
+      const t = JSON.parse(f.cat.value), dup = lists.budgets.find(x => x.group === t.group && (x.sub || "") === t.sub && x.period === per && (!b || x.id !== b.id) && !lists.debtsDeleted.includes(x.id));
+      if (dup) { flash("That one already has a " + per + " budget. Tap it to edit."); return; }
+      if (b) Object.assign(b, { group: t.group, sub: t.sub, amount: amt, period: per, u: Date.now() });
+      else lists.budgets.push({ id: uid(), u: Date.now(), group: t.group, sub: t.sub, amount: amt, period: per });
+      closeCatModal(); save(); renderBudget(); flash("Budget saved ♡"); });
+  }
+  $("bud-plus").addEventListener("click", () => budgetModal(null));
+  $("bud-view").addEventListener("click", e => { const b = e.target.closest("[data-bv]"); if (b) { budView = b.dataset.bv; renderBudget(); } });
+  $("bud-strip").addEventListener("click", e => { const b = e.target.closest("[data-bm],[data-by]"); if (!b) return; if (b.dataset.bm) budMonth = b.dataset.bm; else budYear = b.dataset.by; renderBudget(); });
+  $("bud-list").addEventListener("click", e => { const b = e.target.closest("[data-bud]"); if (b) budgetModal(lists.budgets.find(x => x.id === b.dataset.bud)); });
+
   // ---------- tabs ----------
   function showTab(t) {
     ui.tab = t;
@@ -1832,7 +1956,7 @@ body.sheet-open { overflow: hidden; }
   $("h-recent-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-backup").addEventListener("click", e => { if (e.target.closest("[data-home=backup]")) $("bk-save").click(); });
 
-  function renderAll() { renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
+  function renderAll() { renderBudget(); renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
   load(); try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
   renderNet(); renderAll(); showTab(ui.tab || "home");
