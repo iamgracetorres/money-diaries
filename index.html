@@ -241,6 +241,10 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
 .dline .dv small { display: block; color: var(--muted, #8a7f76); font-size: 12px; }
 .dline .da { font-weight: 600; white-space: nowrap; }
 .dline.back .da { color: var(--income, #3f8f5b); }
+.bklogo { width: 20px; height: 20px; border-radius: 6px; object-fit: contain; vertical-align: -5px; margin-right: 6px; background: #fff; display: inline-block; }
+.bklogo.em { background: none; font-size: 15px; line-height: 20px; text-align: center; }
+.chip .bklogo { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; }
+#p-bank-logo .bklogo { margin: 0 0 0 6px; }
 </style>
 </head>
 <body>
@@ -287,7 +291,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     <div id="q-results" hidden></div>
   </section>
   <section class="picker" aria-label="Choose bank and month">
-    <label for="p-bank">Which bank?<select id="p-bank"></select></label>
+    <label for="p-bank"><span>Which bank?<span id="p-bank-logo"></span></span><select id="p-bank"></select></label>
     <label for="p-month"><span id="p-month-label">Month</span>
       <span class="row"><button type="button" class="step" id="m-prev" aria-label="Previous month">‹</button><select id="p-month"></select><button type="button" class="step" id="m-next" aria-label="Next month">›</button></span>
     </label>
@@ -641,6 +645,14 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     if (!site) return em;
     return `<img class="appic" src="https://www.google.com/s2/favicons?domain=${site}&sz=64" alt="" loading="lazy" data-em="${em}" onerror="this.replaceWith(document.createTextNode(this.dataset.em))">`;
   }
+  // Bank logos: each bank's own site icon, with the account-type emoji as a stand-in when it can't load.
+  const BANK_SITES = [[/bpi/i, "bpi.com.ph"], [/maribank|seabank/i, "maribank.ph"], [/unionbank/i, "unionbankph.com"], [/eastwest/i, "eastwestbanker.com"], [/metrobank/i, "metrobank.com.ph"],
+    [/\bbdo\b/i, "bdo.com.ph"], [/gotyme/i, "gotyme.com.ph"], [/gcash/i, "gcash.com"], [/grab/i, "grab.com"], [/spaylater|shopee/i, "shopee.ph"]];
+  function bankLogo(b) {
+    const hit = BANK_SITES.find(([re]) => re.test(b)), em = TYPE_ICON[acctType(b)] || "🏦";
+    if (!hit) return `<span class="bklogo em" aria-hidden="true">${em}</span>`;
+    return `<img class="bklogo" src="https://www.google.com/s2/favicons?domain=${hit[1]}&sz=64" alt="" loading="lazy" data-em="${em}" onerror="var s=document.createElement('span');s.className='bklogo em';s.textContent=this.dataset.em;this.replaceWith(s)">`;
+  }
   // ===== end shared core =====
   // ===== transfers (same on both pages) =====
   // A transfer is two real rows: money out on one account (sentTo: the other account) and money in on the other (paidFrom).
@@ -844,6 +856,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   function renderPickers() {
     if (!lists.accounts.includes(ui.bank)) ui.bank = ordered()[0];
     $("p-bank").innerHTML = acctOptgroups(ui.bank, () => true, b => b + (period(b, ui.month) ? "  ●" : ""));
+    $("p-bank-logo").innerHTML = bankLogo(ui.bank);
     const months = new Set(); for (let i = -1; i <= 24; i++) months.add(shiftMonth(thisMonth(), -i));
     Object.values(periods).forEach(p => months.add(p.month)); months.add(ui.month);
     const has = new Set(Object.values(periods).filter(p => p.bank === ui.bank).map(p => p.month));
@@ -1181,7 +1194,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
 
   // ---------- settings ----------
   function renderSettings() {
-    $("c-accounts").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); return xs.length ? `<div class="acct-head" style="margin:8px 0 4px"><span>${label}</span></div><div class="chips">` + xs.map(a => `<span class="chip">${html(a)}<button type="button" data-type="${html(a)}" aria-label="Change group for ${html(a)}" title="Tap to move to the next group">${TYPE_ICON[t]}</button><button type="button" data-rm-acct="${html(a)}" aria-label="Remove ${html(a)}">×</button></span>`).join("") + `</div>` : ""; }).join("");
+    $("c-accounts").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); return xs.length ? `<div class="acct-head" style="margin:8px 0 4px"><span>${label}</span></div><div class="chips">` + xs.map(a => `<span class="chip">${bankLogo(a)}${html(a)}<button type="button" data-type="${html(a)}" aria-label="Change group for ${html(a)}" title="Tap to move to the next group">${TYPE_ICON[t]}</button><button type="button" data-rm-acct="${html(a)}" aria-label="Remove ${html(a)}">×</button></span>`).join("") + `</div>` : ""; }).join("");
     $("c-groups").innerHTML = lists.expenseGroups.map((g, gi) => `<div class="group" data-g="${gi}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-weight:500">${html(g.name)}</strong><button type="button" class="icon" data-rm-group style="font-size:16px">×</button></div>
       <div class="chips">${g.subs.map((s, i) => `<span class="chip">${html(s)}<button type="button" data-rm-sub="${i}">×</button></span>`).join("")}</div>
       <form class="row sub-form" style="margin-top:8px"><input placeholder="Add to ${html(g.name)}"><button class="btn small">Add</button></form></div>`).join("");
@@ -1527,7 +1540,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
       const sub = !x ? "No data yet" : x.kind === "statement" ? `${cc ? "Statement" : "End of"} ${monthLabel(x.month)}` : x.kind === "running" ? `So far in ${monthLabel(x.month)}` : `${monthLabel(x.month)} · add a starting balance`;
       const ub = cc ? (unb[b] || 0) : 0, lim = cc ? (lists.creditLimits || {})[b] : null;
       const sub2 = sub + (ub ? ` · ${peso(ub)} installments to come` : "") + (lim != null ? ` · ${peso(lim - (x && x.v != null ? x.v : 0) - ub)} available` : "");
-      return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${html(b)}</span><span class="sub">${sub2}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
+      return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${bankLogo(b)}${html(b)}</span><span class="sub">${sub2}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
     // Accounts with no data yet are tucked behind a link so Home stays short.
     const used = (b) => !!latestPeriod(b);
     const hiddenN = lists.accounts.filter(b => !used(b)).length;
