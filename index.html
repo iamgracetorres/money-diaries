@@ -868,15 +868,13 @@ body.sheet-open { overflow: hidden; }
     return changed;
   }
   // ===== end installments =====
-  // How much of a card's limit is in use right now: the last statement balance (or a typed starting balance),
-  // plus every charge since, minus payments. With no balance typed in yet, it's all charges minus payments.
+  // How much of a card's limit is in use: the starting balance you typed (if any), plus every charge, minus every payment.
+  // An installment purchase counts in full the day you buy it, so its monthly charges are skipped here.
   function creditUsed(bank) {
     const ps = Object.values(periods).filter(q => q.bank === bank).sort((a, b) => a.month.localeCompare(b.month));
-    let k = -1; for (let i = ps.length - 1; i >= 0; i--) if (ps[i].ending != null) { k = i; break; }
-    let used = 0, from = 0;
-    if (k >= 0) { used = ps[k].ending; from = k + 1; }
-    else { const j = ps.findIndex(q => beginOf(bank, q.month) != null); if (j >= 0) { used = beginOf(bank, ps[j].month); from = j; } }
-    for (let i = from; i < ps.length; i++) { const t = totals(ps[i]); used += t.exp - t.add; }
+    const j = ps.findIndex(q => q.beginning != null && carried(bank, q.month) == null);
+    let used = j >= 0 ? ps[j].beginning : 0;
+    ps.slice(Math.max(j, 0)).forEach(q => q.rows.forEach(r => { if (!isValid(r) || r.instOf) return; const n = parseFloat(cleanAmount(r.amount)) || 0; used += r.type === "income" ? -n : n; }));
     return Math.round(used * 100) / 100;
   }
   const ordered = () => orderedAccounts();
@@ -967,7 +965,7 @@ body.sheet-open { overflow: hidden; }
     { const box = $("cl-box"); box.hidden = !credit;
       if (credit) { const lim = (lists.creditLimits || {})[ui.bank], ub = unbilledByCard()[ui.bank] || 0, owed = creditUsed(ui.bank);
         if (document.activeElement !== $("cl-limit")) $("cl-limit").value = lim != null ? peso(lim) : "";
-        $("cl-info").innerHTML = `${ub ? `<span>🗓 Installments not billed yet <b>${peso(ub)}</b></span>` : ""}${lim != null ? `<span>Used so far <b>${peso(owed)}</b></span><span>Available <b class="${lim - owed - ub < 0 ? "neg" : ""}">${peso(lim - owed - ub)}</b></span><span class="n">${peso(lim)} limit − ${peso(owed)} used${ub ? ` − ${peso(ub)} installments to come` : ""}</span>` : `<span class="n">Add the limit to see how much you can still use.</span>`}`; } }
+        $("cl-info").innerHTML = `${ub ? `<span class="n">🗓 ${peso(ub)} of installments still to be billed</span>` : ""}${lim != null ? `<span>Available <b class="${lim - owed < 0 ? "neg" : ""}">${peso(lim - owed)}</b></span><span class="n">${peso(lim)} limit − charges + payments = ${peso(owed)} used. Installments count in full when bought.</span>` : `<span class="n">Add the limit to see how much you can still use.</span>`}`; } }
     const badge = $("recon"), f = $("formula");
     if (b0 == null || !p || p.ending == null) { badge.className = "badge na"; badge.textContent = "Add both balances so I can check the math"; f.textContent = ""; return; }
     const exp = credit ? b0 + t.exp - t.add : b0 + t.add - t.exp, diff = Math.round((p.ending - exp) * 100) / 100;
@@ -1653,7 +1651,7 @@ body.sheet-open { overflow: hidden; }
       if (x && x.v != null) sums[acctType(b)] = (sums[acctType(b)] || 0) + x.v;
       const sub = !x ? "No data yet" : x.kind === "statement" ? `${cc ? "Statement" : "End of"} ${monthLabel(x.month)}` : x.kind === "running" ? `So far in ${monthLabel(x.month)}` : `${monthLabel(x.month)} · add a starting balance`;
       const ub = cc ? (unb[b] || 0) : 0, lim = cc ? (lists.creditLimits || {})[b] : null;
-      const sub2 = sub + (ub ? ` · ${peso(ub)} installments to come` : "") + (lim != null ? ` · ${peso(lim - creditUsed(b) - ub)} available` : "");
+      const sub2 = sub + (ub ? ` · ${peso(ub)} installments to come` : "") + (lim != null ? ` · ${peso(lim - creditUsed(b))} available` : "");
       return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${bankLogo(b)}${html(b)}</span><span class="sub">${sub2}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
     // Accounts with no data yet are tucked behind a link so Home stays short.
     const used = (b) => !!latestPeriod(b);
