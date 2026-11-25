@@ -389,6 +389,10 @@ select.sheet-hidden { display: none !important; }
 .tx-bal .io .e { color: var(--ink); }
 .tx-bal .io small { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .tx-bal .io .e { font: inherit; font-weight: 700; color: var(--ink); background: none; border: 0; padding: 0; }
+.ico-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; max-height: 168px; overflow-y: auto; padding: 2px; }
+.ico { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--cream); font-size: 20px; display: grid; place-items: center; padding: 0; }
+.ico .appic { width: 22px; height: 22px; } .ico.on { border-color: var(--accent); background: var(--accent-soft); outline: 2px solid var(--accent); }
+.modal-box { max-height: 90vh; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -813,6 +817,7 @@ select.sheet-hidden { display: none !important; }
     // Accounts added later (kept added once, so deleting one in Settings sticks).
     if (!lists.added9557) { if (!lists.accounts.includes("BPI 9557")) lists.accounts.push("BPI 9557"); lists.accountTypes["BPI 9557"] = "credit";
       lists.creditAccounts = lists.accounts.filter(isCredit); lists.added9557 = 1; changed = true; }
+    if (!lists.addedLongTermLoan) { const t = 1795600000000; catLog().push({ id: "ltl-g", t, kind: "g", group: "Long-term Loan", from: "Long-term Loan", add: 1 }, { id: "ltl-s", t: t + 1, kind: "s", group: "Long-term Loan", from: "Home Mortgage", add: 1 }); lists.addedLongTermLoan = 1; changed = true; }
     if (applyCatChangesToLists()) changed = true;
     if (applyAcctChangesToLists()) changed = true;
     // Adjustment: for fixing a beginning balance. Money in or money out, so it's in both lists.
@@ -834,6 +839,7 @@ select.sheet-hidden { display: none !important; }
     Object.entries(L.accountTypes || {}).forEach(([a, t]) => { if (!lists.accountTypes[a]) lists.accountTypes[a] = t; });
     (L.acctChanges || []).forEach(c => { if (!acctLog().some(x => x.id === c.id)) acctLog().push(JSON.parse(JSON.stringify(c))); });
     (L.catChanges || []).forEach(c => { if (!catLog().some(x => x.id === c.id)) catLog().push(JSON.parse(JSON.stringify(c))); });
+    lists.catIcons = lists.catIcons || {}; Object.entries(L.catIcons || {}).forEach(([k, v]) => { const m = lists.catIcons[k]; if (!m || (v.u || 0) > (m.u || 0)) lists.catIcons[k] = v; });
     lists.creditLimits = lists.creditLimits || {}; Object.entries(L.creditLimits || {}).forEach(([a, v]) => { if (lists.creditLimits[a] == null) lists.creditLimits[a] = v; });
     const gone = new Set([...(lists.debtsDeleted || []), ...(L.debtsDeleted || [])]); lists.debtsDeleted = [...gone];
     ["debts", "debtLog", "budgets"].forEach(k => { if (!Array.isArray(lists[k])) lists[k] = [];
@@ -893,11 +899,15 @@ select.sheet-hidden { display: none !important; }
     "Maintenance": "🔧", "Parking fees": "🅿️", "Petrol": "⛽",
     "Gifts and Donations": "🎁", "Birthday": "🎂", "Charity": "💗", "Christening": "👶", "Christmas Giving": "🎄", "Funeral": "🕊️", "Marriage": "💒",
     "Insurance": "🛡️", "Home Fire/MRI Premiums": "🛡️", "Fees": "💸", "Refunded Expenses": "↩️", "Pass-through Expense": "🔁", "Debt to me": "🤝", "Debt Payments": "🏦",
-    "Salary": "💵", "Freelance": "💻", "Transfers In": "📥", "Interest": "📈", "Refund": "↩️", "Payment": "💳", "Gift": "🎁", "Cashback": "🪙", "Other Income": "💰", "Debt Repayment": "🤝", "Transfer": "↔️", "Adjustment": "⚖️"
+    "Salary": "💵", "Freelance": "💻", "Transfers In": "📥", "Interest": "📈", "Refund": "↩️", "Payment": "💳", "Gift": "🎁", "Cashback": "🪙", "Other Income": "💰", "Debt Repayment": "🤝", "Transfer": "↔️", "Adjustment": "⚖️", "Long-term Loan": "🏛️", "Home Mortgage": "🏡"
   };
   // Group-specific overrides where a name means something different under another category.
   const CAT_ICONS_BY_GROUP = { "Vehicle|Maintenance": "🔧", "Investments|Vehicle": "🚗", "Debt to me|*": "👤" };
+  // Icons you picked yourself (Settings › tap a category) win over the built-in ones.
+  const iconKey = (group, sub) => sub ? (group ? "s|" + group + "|" + sub : "i|" + sub) : "g|" + group;
+  const iconOverride = (group, sub) => { const x = (lists.catIcons || {})[iconKey(group, sub)]; return x && x.e ? x.e : null; };
   function catIcon(group, sub) {
+    const ov = iconOverride(group, sub); if (ov) return ov;
     if (sub && CAT_ICONS_BY_GROUP[group + "|" + sub]) return CAT_ICONS_BY_GROUP[group + "|" + sub];
     if (sub && CAT_ICONS_BY_GROUP[group + "|*"]) return CAT_ICONS_BY_GROUP[group + "|*"];
     return (sub && CAT_ICONS[sub]) || (group && CAT_ICONS[group]) || "🏷️";
@@ -906,7 +916,7 @@ select.sheet-hidden { display: none !important; }
   const APP_SITES = { "ChatGPT": "chatgpt.com", "Claude": "claude.ai", "Disney": "disneyplus.com", "Google One": "one.google.com",
     "Grab / Food Panda": "grab.com", "Grab": "grab.com", "iCloud": "icloud.com", "Netflix": "netflix.com", "Grace's Fam Netflix": "netflix.com", "YouTube": "youtube.com" };
   function catIconHtml(group, sub) {
-    const em = catIcon(group, sub), site = sub && APP_SITES[sub];
+    const em = catIcon(group, sub), site = sub && !iconOverride(group, sub) && APP_SITES[sub];
     if (!site) return em;
     return `<img class="appic" src="https://www.google.com/s2/favicons?domain=${site}&sz=64" alt="" loading="lazy" data-em="${em}" onerror="this.replaceWith(document.createTextNode(this.dataset.em))">`;
   }
@@ -1607,6 +1617,7 @@ select.sheet-hidden { display: none !important; }
 
   // ---------- categories: tap to rename, hold to delete, ＋ to add ----------
   let catTab = "expense";
+  const ICON_CHOICES = ["🏡", "🏛️", "🏦", "💳", "💰", "💸", "🪙", "📈", "🧾", "🛒", "🍜", "🍔", "☕", "🍞", "🥬", "🐟", "🍚", "🧴", "🚌", "🚕", "🛵", "⛽", "🚗", "🅿️", "⚡", "💧", "🔥", "📶", "📱", "🏠", "🛋️", "🔧", "🪴", "🧹", "👗", "👟", "👜", "💄", "💅", "💇", "💊", "🩺", "🏥", "🧪", "🎬", "🎮", "📚", "🎨", "🏋️", "✈️", "🏖️", "🏨", "🎁", "🎂", "🎄", "⛪", "🙏", "🐶", "🐱", "👶", "🍼", "🧸", "🎒", "✏️", "🎓", "💼", "🖥️", "🧑‍💻", "👨‍👩‍👧", "👵", "❤️", "⭐"];
   const PROTECTED = { g: ["Debt to me", "Debt Payments"], i: ["Debt Repayment"] };
   const catRowHtml = (k, g, n, icon, bg, sub) => `<button type="button" class="cat-row${sub ? " sub" : ""}" data-k="${k}" data-g="${html(g)}" data-n="${html(n)}"><span class="cb" style="background:${bg}">${icon}</span><span class="nm">${html(sub ? shortSub(g, n) : n)}</span><span class="chev" aria-hidden="true">›</span></button>`;
   function renderCats() {
@@ -1625,9 +1636,17 @@ select.sheet-hidden { display: none !important; }
   function editCat(k, g, n) {
     const f = catModal(`<h3>${k === "g" ? "Edit category" : k === "s" ? "Edit subcategory" : "Edit income category"}</h3>${k === "s" ? `<p class="hint" style="margin:0">In ${html(g)}</p>` : ""}
       <label class="k">Name<input name="nm" value="${html(n)}" required></label>
+      <div class="k">Icon</div><div class="ico-grid" role="radiogroup" aria-label="Icon">${[`<button type="button" class="ico${iconOverride(k === "i" ? "" : g, k === "g" ? "" : n) ? "" : " on"}" data-ico="" title="Use the default icon" style="font-size:12px;font-weight:700">Default</button>`, ...ICON_CHOICES.map(e => `<button type="button" class="ico${iconOverride(k === "i" ? "" : g, k === "g" ? "" : n) === e ? " on" : ""}" data-ico="${e}">${e}</button>`)].join("")}</div>
       <p class="hint" style="margin:0">Every transaction and ★ remembered vendor using it gets the new name.</p>
       <div class="modal-acts"><button type="button" class="btn ghost" data-x>Cancel</button><button class="btn primary">Save</button></div>`);
-    f.addEventListener("submit", e => { e.preventDefault(); const v = f.nm.value.trim(); closeCatModal(); if (!v || v === n) return;
+    let pickedIco = null;
+    f.querySelector(".ico-grid").addEventListener("click", e => { const b = e.target.closest("[data-ico]"); if (!b) return; pickedIco = b.dataset.ico; f.querySelectorAll(".ico").forEach(x => x.classList.toggle("on", x === b)); });
+    f.addEventListener("submit", e => { e.preventDefault(); const v = f.nm.value.trim(); closeCatModal();
+      if (pickedIco !== null) { lists.catIcons = lists.catIcons || {}; const key = iconKey(k === "i" ? "" : g, k === "g" ? "" : n);
+        if (pickedIco) lists.catIcons[key] = { e: pickedIco, u: Date.now() }; else lists.catIcons[key] = { e: "", u: Date.now() };
+        if (!v || v === n) { save(); renderAll(); flash("Icon updated ♡"); return; } }
+      if (!v || v === n) return;
+      if (pickedIco !== null) { const nk = iconKey(k === "i" ? "" : g, k === "g" ? "" : v), ok = iconKey(k === "i" ? "" : g, k === "g" ? "" : n); lists.catIcons[nk] = lists.catIcons[ok]; }
       if (k === "g" && PROTECTED.g.includes(n) || k === "i" && PROTECTED.i.includes(n)) { flash(`${n} is used by the Debt tab, so its name stays.`); return; }
       logCat({ kind: k, group: g, from: n, to: v }); flash(`Renamed to ${v} ♡`); });
   }
