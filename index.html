@@ -381,7 +381,11 @@ select.sheet-hidden { display: none !important; }
 .sheet-item.cat .nm { font-size: 15px; font-weight: 500; }
 .sheet-item.cat.in { margin-left: 14px; width: calc(100% - 14px); }
 .sheet-grp.cat { font-size: 12.5px; letter-spacing: .02em; text-transform: none; color: var(--charcoal); padding-top: 14px; }
-.tx-bal .io { flex-wrap: wrap; justify-content: center; }
+.tx-bal .io { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 460px; margin-top: 6px; }
+.tx-bal .io > * { display: grid; gap: 1px; justify-items: center; background: var(--surface); border-radius: 14px; padding: 7px 4px; box-shadow: var(--shadow); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tx-bal .io > * { align-content: center; line-height: 1.35; border: 0; font-family: inherit; font-weight: 700; }
+.tx-bal .io .e { color: var(--ink); }
+.tx-bal .io small { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .tx-bal .io .e { font: inherit; font-weight: 700; color: var(--ink); background: none; border: 0; padding: 0; }
 </style>
 </head>
@@ -1165,8 +1169,8 @@ select.sheet-hidden { display: none !important; }
     { const b0 = beginOf(ui.bank, ui.month), endV = p && p.ending != null ? p.ending : b0 != null ? (credit ? b0 + t.exp - t.add : b0 + t.add - t.exp) : null;
       $("tx-bal-k").textContent = credit ? "Owed" : "Balance"; $("tx-bal-v").textContent = endV != null ? peso(endV) : "—";
       const calc = b0 != null ? (credit ? b0 + t.exp - t.add : b0 + t.add - t.exp) : null, endShow = p && p.ending != null ? p.ending : calc;
-      $("tx-io").innerHTML = `<span class="i">In ${peso(t.add)}</span><span class="o">Out ${peso(t.exp)}</span>`
-        + `<button type="button" class="e" id="tx-end">End ${endShow != null ? peso(endShow) : "—"}</button>`;
+      $("tx-io").innerHTML = `<button type="button" class="e" id="tx-beg"><small>Beg Bal</small>${b0 != null ? peso(b0) : "—"}</button><span class="i"><small>In</small>${peso(t.add)}</span><span class="o"><small>Out</small>${peso(t.exp)}</span>`
+        + `<button type="button" class="e" id="tx-end"><small>End Bal</small>${endShow != null ? peso(endShow) : "—"}</button>`;
       $("sd-hint").textContent = b0 != null && p && p.ending != null ? (Math.abs(p.ending - (credit ? b0 + t.exp - t.add : b0 + t.add - t.exp)) < 0.01 ? "balanced ✓" : "doesn't add up yet") : "balances & math check"; }
     const cb = carried(ui.bank, ui.month), b0 = beginOf(ui.bank, ui.month);
     const bi = $("b-begin"), ei = $("b-end");
@@ -1247,7 +1251,8 @@ select.sheet-hidden { display: none !important; }
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("bank-sheet").hidden) closeBankSheet(); });
   $("bank-pill").addEventListener("click", () => openBankSheet(ui.bank, b => { openTx = null; go(b, ui.month); }));
   $("a-bank-pill").addEventListener("click", () => openBankSheet(ui.bank, b => { const sel = $("a-bank"); sel.value = b; sel.dispatchEvent(new Event("change")); }));
-  $("tx-io").addEventListener("click", e => { if (!e.target.closest("#tx-end")) return; const d = $("stmt-details"); d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); setTimeout(() => { const i = $("b-end"); if (i) i.focus({ preventScroll: true }); }, 350); });
+  $("tx-io").addEventListener("click", e => { const b = e.target.closest("#tx-end, #tx-beg"); if (!b) return; const d = $("stmt-details"); d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" });
+    setTimeout(() => { const i = $(b.id === "tx-beg" ? "b-begin" : "b-end"); if (i && !i.readOnly) i.focus({ preventScroll: true }); }, 350); });
   $("month-strip").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) { openTx = null; go(ui.bank, b.dataset.m); } });
   $("q-toggle").addEventListener("click", () => { const box = $("search-box"); box.hidden = !box.hidden; if (!box.hidden) $("q").focus(); else { $("q").value = ""; renderSearch(); } });
   $("m-prev").addEventListener("click", () => go(ui.bank, shiftMonth(ui.month, -1)));
