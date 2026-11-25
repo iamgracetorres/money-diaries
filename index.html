@@ -368,6 +368,19 @@ body.sheet-open { overflow: hidden; }
 .cat-plus { width: 34px; height: 34px; font-size: 20px; }
 #bank-list .cat-row .nm small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
 #bank-list .cb.bk { background: none; } #bank-list .cb.bk .bklogo { width: 30px; height: 30px; border-radius: 50%; margin: 0; } #bank-list .cb.bk .bklogo.em { line-height: 30px; font-size: 17px; background: var(--cream); }
+select.sheet-hidden { display: none !important; }
+.pick-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 46px; text-align: left; font: inherit; font-size: 15px; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px 6px 7px; }
+.pick-btn.nocat { border-color: var(--accent); background: var(--accent-soft); }
+.pick-btn:disabled { opacity: .5; }
+.pick-btn .pi, .sheet-item .pi { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; }
+.pick-btn .pi .appic, .sheet-item .pi .appic { width: 19px; height: 19px; border-radius: 5px; }
+.pick-btn .pt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } .pick-btn .pt.ph { font-weight: 400; color: var(--muted); padding-left: 5px; }
+.pick-btn .pc { color: var(--muted); font-size: 12px; }
+.row > .pick-btn { flex: 1; }
+.sheet-item.cat { grid-template-columns: 32px minmax(0, 1fr) auto auto; min-height: 48px; padding: 7px 12px; margin: 3px 0; }
+.sheet-item.cat .nm { font-size: 15px; font-weight: 500; }
+.sheet-item.cat.in { margin-left: 14px; width: calc(100% - 14px); }
+.sheet-grp.cat { font-size: 12.5px; letter-spacing: .02em; text-transform: none; color: var(--charcoal); padding-top: 14px; }
 </style>
 </head>
 <body>
@@ -1159,13 +1172,46 @@ body.sheet-open { overflow: hidden; }
   // Account chooser: a sheet with each bank's logo, grouped like Home, with the latest balance.
   let sheetPick = null;
   function openBankSheet(cur, onPick) {
-    sheetPick = onPick;
+    sheetPick = onPick; $("bank-sheet-h").textContent = "Choose an account";
     $("bank-sheet-list").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); if (!xs.length) return "";
       return `<div class="sheet-grp">${label}</div>` + xs.map(b => { const x = typeof balanceOf === "function" ? balanceOf(b) : null;
         return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
     $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
     const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").scrollTop = 0;
     setTimeout(() => { const f = $("bank-sheet-list").querySelector(".on") || $("bank-sheet-list").querySelector(".sheet-item"); if (f) f.focus({ preventScroll: true }); }, 30);
+  }
+  // Category pickers with icons: any <select data-sheet> gets a button that opens this sheet ("group", "sub", "income" or "any").
+  function optInfo(sel, o) {
+    const v = o.value; if (!v) return null; const kind = sel.dataset.sheet;
+    try { const j = JSON.parse(v); if (j && typeof j === "object") { const g = j.group || "", sb = j.sub != null ? j.sub : (j.category || ""); return { g, s: sb, inc: !g && lists.income.includes(sb) }; } } catch (er) {}
+    const og = o.parentElement && o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : "";
+    if (kind === "income") return { g: "", s: v, inc: true };
+    if (kind === "group") return { g: v, s: "" };
+    return { g: sel.dataset.g || og || groupOf(v), s: v };
+  }
+  const optIcon = (x) => x.inc ? catIcon("", x.s) : x.s ? catIconHtml(x.g, x.s) : catIcon(x.g);
+  const optName = (x) => x.s ? shortSub(x.g, x.s) : x.g;
+  function syncPickBtn(sel) {
+    let b = sel.nextElementSibling; if (!b || !b.classList.contains("pick-btn")) { b = document.createElement("button"); b.type = "button"; b.className = "pick-btn"; sel.after(b);
+      b.addEventListener("click", () => openOptSheet(sel)); }
+    const o = sel.options[sel.selectedIndex], x = o ? optInfo(sel, o) : null;
+    b.disabled = sel.disabled; b.className = "pick-btn" + (sel.classList.contains("nocat") ? " nocat" : "");
+    b.setAttribute("aria-label", sel.getAttribute("aria-label") || "Pick");
+    b.innerHTML = x ? `<span class="pi" style="background:${bubble(x.inc ? "income:" + x.s : x.g)}">${optIcon(x)}</span><span class="pt">${html(optName(x))}</span><span class="pc" aria-hidden="true">▾</span>`
+      : `<span class="pt ph">${html(o ? o.textContent.replace(/^\W+\s/, "") : "Pick…")}</span><span class="pc" aria-hidden="true">▾</span>`;
+  }
+  function enhanceSelects(root) { (root || document).querySelectorAll("select[data-sheet]").forEach(sel => { sel.classList.add("sheet-hidden"); syncPickBtn(sel); }); }
+  function openOptSheet(sel) {
+    const items = []; let lastG = null, out = "";
+    [...sel.options].forEach((o, i) => { const x = optInfo(sel, o); if (!x) return;
+      const og = o.parentElement && o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : null;
+      if (og !== null && og !== lastG) { lastG = og; out += `<div class="sheet-grp cat">${catIcon(og)} ${html(og)}</div>`; }
+      out += `<button type="button" class="sheet-item cat${og !== null ? " in" : ""}${i === sel.selectedIndex ? " on" : ""}" data-pick="${i}"><span class="pi" style="background:${bubble(x.inc ? "income:" + x.s : x.g)}">${optIcon(x)}</span><span class="nm">${html(optName(x))}</span><span></span>${i === sel.selectedIndex ? '<span class="ck" aria-hidden="true">✓</span>' : "<span></span>"}</button>`; });
+    $("bank-sheet-h").textContent = sel.dataset.sheet === "group" ? "Choose a category" : sel.dataset.sheet === "income" ? "Choose an income category" : sel.dataset.sheet === "sub" ? (sel.dataset.g ? `${sel.dataset.g}: choose a subcategory` : "Choose a subcategory") : "Choose a category";
+    $("bank-sheet-list").innerHTML = out || `<p class="empty">Nothing to pick here yet.</p>`;
+    sheetPick = (i) => { sel.selectedIndex = +i; sel.dispatchEvent(new Event("change", { bubbles: true })); syncPickBtn(sel); };
+    $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
+    const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").parentElement.scrollTop = 0;
   }
   function closeBankSheet() { $("bank-sheet").hidden = true; document.body.classList.remove("sheet-open"); sheetPick = null; }
   $("bank-sheet").addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) { const f = sheetPick; closeBankSheet(); if (f) f(b.dataset.pick); return; } if (e.target.id === "bank-sheet") closeBankSheet(); });
@@ -1190,6 +1236,7 @@ body.sheet-open { overflow: hidden; }
     const gv = keep ? g.value : "", sv = keep ? s.value : "";
     if (addType === "income") { g.innerHTML = incomeOptions(gv); s.hidden = true; }
     else { g.innerHTML = groupOptions(gv); s.hidden = false; s.innerHTML = subOptions(g.value, sv); s.disabled = !groupByName(g.value) || !groupByName(g.value).subs.length; }
+    g.dataset.sheet = addType === "income" ? "income" : "group"; s.dataset.sheet = "sub"; s.dataset.g = g.value;
     pf.hidden = false; pf.innerHTML = paidOptions(keep ? pf.value : "", addType); pf.setAttribute("aria-label", addType === "income" ? "Transfer from" : "Transfer to");
     if (!$("a-date").value) $("a-date").value = isCredit(ui.bank) || ui.month === thisMonth() ? today() : ui.month + "-01";
     $("desc-list").innerHTML = [...new Set(Object.values(periods).flatMap(p => p.rows.map(r => r.description)).filter(Boolean))].slice(-80).map(d => `<option value="${html(d)}">`).join("");
@@ -1278,13 +1325,13 @@ body.sheet-open { overflow: hidden; }
             return `<div class="part" data-i="${i}">
               <div class="row"><input data-pf="amount" inputmode="decimal" value="${html(cleanAmount(x.amount) ? peso(parseFloat(cleanAmount(x.amount))) : x.amount || "")}" placeholder="₱ 0.00" aria-label="Part ${i + 1} amount"><button type="button" class="btn small danger" data-act="del-part" style="flex:0 0 auto">Remove part</button></div>
               <input data-pf="note" value="${html(x.note || "")}" placeholder="What's this part?" aria-label="Part ${i + 1} description">
-              ${r.type === "income" ? `<select data-pf="income-cat">${incomeOptions(x.category)}</select>`
-                : `<div class="row"><select data-pf="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>`}
+              ${r.type === "income" ? `<select data-pf="income-cat" data-sheet="income">${incomeOptions(x.category)}</select>`
+                : `<div class="row"><select data-pf="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>`}
             </div>`; }).join("")
           + `<div class="split-acts"><button type="button" class="btn small" data-act="add-part">+ Add part</button>${left > 0.004 ? `<button type="button" class="btn small" data-act="fill-left">Put ${peso(left)} in the last part</button>` : ""}<button type="button" class="btn ghost small" data-act="unsplit">Undo split</button></div></div>`; }
-      else if (r.type === "income") cats = `<div class="row"><select data-f="income-cat" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`;
+      else if (r.type === "income") cats = `<div class="row"><select data-f="income-cat" data-sheet="income" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`;
       else { const g = rowGroup(r); const grp = groupByName(g);
-        cats = `<div class="row"><select data-f="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`; }
+        cats = `<div class="row"><select data-f="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`; }
       const canInst = isCredit(ui.bank) && r.type === "expense" && !xf && !r.instOf;
       let instBox = "";
       if (canInst && (isInst(r) || instOpen === r.id)) {
@@ -1524,7 +1571,7 @@ body.sheet-open { overflow: hidden; }
   }
   $("cat-tabs").addEventListener("click", e => { const b = e.target.closest("[data-ct]"); if (b) { catTab = b.dataset.ct; renderCats(); } });
   const catName = (k, g, n) => k === "s" ? `${g} • ${n}` : n;
-  function catModal(inner) { closeCatModal(); const d = document.createElement("div"); d.className = "modal"; d.id = "cat-modal"; d.innerHTML = `<form class="modal-box" autocomplete="off">${inner}</form>`; document.body.appendChild(d);
+  function catModal(inner) { closeCatModal(); const d = document.createElement("div"); d.className = "modal"; d.id = "cat-modal"; d.innerHTML = `<form class="modal-box" autocomplete="off">${inner}</form>`; document.body.appendChild(d); enhanceSelects(d);
     d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-x]")) closeCatModal(); }); const f = d.querySelector("input,select"); if (f) setTimeout(() => { f.focus(); if (f.select) f.select(); }, 30); return d.querySelector("form"); }
   function closeCatModal() { const d = $("cat-modal"); if (d) d.remove(); }
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCatModal(); });
@@ -1557,7 +1604,7 @@ body.sheet-open { overflow: hidden; }
     const what = catName(k, g, n) + (k === "g" && groupByName(n) && groupByName(n).subs.length ? ` and its ${groupByName(n).subs.length} subcategories` : "");
     const f = catModal(`<h3>Delete ${html(catName(k, g, n))}?</h3>
       ${used ? `<p class="del-warn">⚠ ${used} transaction${used === 1 ? " uses" : "s use"} ${html(what)}. Pick where to move ${used === 1 ? "it" : "them"} first.</p>
-        <label class="k">Move to<select name="to" required><option value="">Pick a category…</option>${opts}</select></label>`
+        <label class="k">Move to<select name="to" data-sheet="any" required><option value="">Pick a category…</option>${opts}</select></label>`
         : `<p class="hint" style="margin:0">No transactions use ${html(what)}.</p>`}
       <div class="modal-acts"><button type="button" class="btn ghost" data-x>Cancel</button><button class="btn danger-fill">${used ? "Move & delete" : "Delete"}</button></div>`);
     f.addEventListener("submit", e => { e.preventDefault(); let moveTo = null;
@@ -1836,6 +1883,9 @@ body.sheet-open { overflow: hidden; }
     debtOpen = null; save(); renderAll();
   });
 
+  { const a = renderList, b = renderAddForm;
+    renderList = function () { a.apply(this, arguments); enhanceSelects($("tx-list")); };
+    renderAddForm = function () { b.apply(this, arguments); enhanceSelects($("add-form")); }; }
   // ---------- budgets ----------
   // lists.budgets: { id, u, group, sub, amount, period: "monthly" | "yearly" }. Yearly runs January to December.
   let budView = "month", budMonth = null, budYear = null;
@@ -1902,7 +1952,7 @@ body.sheet-open { overflow: hidden; }
   function budgetModal(b) {
     const sel = b ? JSON.stringify({ group: b.group, sub: b.sub || "" }) : "";
     const f = catModal(`<h3>${b ? "Edit budget" : "New budget"}</h3>
-      <label class="k">For<select name="cat" required><option value="">Pick a subcategory…</option>${budgetTargets(sel)}</select></label>
+      <label class="k">For<select name="cat" data-sheet="any" required><option value="">Pick a subcategory…</option>${budgetTargets(sel)}</select></label>
       <label class="k">Budget<input name="amt" inputmode="decimal" placeholder="₱ 0.00" value="${b ? html(peso(parseFloat(b.amount) || 0)) : ""}" required></label>
       <div class="cat-tabs" role="radiogroup" style="margin:0"><button type="button" data-per="monthly" class="${!b || b.period !== "yearly" ? "on" : ""}">Monthly</button><button type="button" data-per="yearly" class="${b && b.period === "yearly" ? "on" : ""}">Yearly</button></div>
       <p class="hint" style="margin:0" id="per-hint"></p>
@@ -2076,7 +2126,7 @@ body.sheet-open { overflow: hidden; }
   $("h-recent-list").addEventListener("click", e => { const b = e.target.closest("[data-bank]"); if (b) openAccount(b.dataset.bank, b.dataset.month); });
   $("h-backup").addEventListener("click", e => { if (e.target.closest("[data-home=backup]")) $("bk-save").click(); });
 
-  function renderAll() { renderBudget(); renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
+  function renderAll() { setTimeout(() => enhanceSelects(), 0); renderBudget(); renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
   load();
   // Opening the app starts on this month; months picked while working stay until the app is closed or left alone for 30 minutes.
