@@ -393,6 +393,10 @@ select.sheet-hidden { display: none !important; }
 .ico { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--cream); font-size: 20px; display: grid; place-items: center; padding: 0; }
 .ico .appic { width: 22px; height: 22px; } .ico.on { border-color: var(--accent); background: var(--accent-soft); outline: 2px solid var(--accent); }
 .modal-box { max-height: 90vh; overflow-y: auto; }
+.sheet { min-height: 62vh; }
+.sheet-top { position: sticky; top: -8px; z-index: 2; background: var(--bg); padding: 2px 0 8px; margin: 0 -2px; }
+#sheet-q { width: 100%; border-radius: 99px; padding: 10px 16px; font-size: 16px; }
+.sheet-item[hidden], .sheet-grp[hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -581,7 +585,7 @@ select.sheet-hidden { display: none !important; }
   </div>
 </div>
 <button class="fab" type="button" id="fab" aria-label="Add a transaction">+</button>
-<div class="sheet-bg" id="bank-sheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bank-sheet-h"><div class="sheet-grip" aria-hidden="true"></div><h3 id="bank-sheet-h">Choose an account</h3><div id="bank-sheet-list"></div></div></div>
+<div class="sheet-bg" id="bank-sheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bank-sheet-h"><div class="sheet-grip" aria-hidden="true"></div><div class="sheet-top"><h3 id="bank-sheet-h">Choose an account</h3><input id="sheet-q" type="search" placeholder="🔍 Search" aria-label="Search the list" autocomplete="off" enterkeyhint="search"></div><div id="bank-sheet-list"></div><p class="empty" id="sheet-none" hidden>Nothing matches.</p></div></div>
 <nav class="tabbar" aria-label="Sections">
   <button type="button" data-tab="home"><span>⌂</span>Home</button>
   <button type="button" data-tab="accounts"><span>▤</span>Transactions</button>
@@ -1232,7 +1236,8 @@ select.sheet-hidden { display: none !important; }
     sheetPick = onPick; $("bank-sheet-h").textContent = "Choose an account";
     $("bank-sheet-list").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); if (!xs.length) return "";
       return `<div class="sheet-grp">${label}</div>` + xs.map(b => { const x = typeof balanceOf === "function" ? balanceOf(b) : null;
-        return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" || t === "loan" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
+        return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-s="${html((b + " " + label).toLowerCase())}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" || t === "loan" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
+    $("sheet-q").value = ""; filterSheet();
     $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
     const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").scrollTop = 0;
     setTimeout(() => { const f = $("bank-sheet-list").querySelector(".on") || $("bank-sheet-list").querySelector(".sheet-item"); if (f) f.focus({ preventScroll: true }); }, 30);
@@ -1262,14 +1267,24 @@ select.sheet-hidden { display: none !important; }
     const items = []; let lastG = null, out = "";
     [...sel.options].forEach((o, i) => { const x = optInfo(sel, o); if (!x) return;
       const og = o.parentElement && o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : null;
-      if (og !== null && og !== lastG) { lastG = og; out += `<div class="sheet-grp cat">${catIcon(og)} ${html(og)}</div>`; }
-      out += `<button type="button" class="sheet-item cat${og !== null ? " in" : ""}${i === sel.selectedIndex ? " on" : ""}" data-pick="${i}"><span class="pi" style="background:${bubble(x.inc ? "income:" + x.s : x.g)}">${optIcon(x)}</span><span class="nm">${html(optName(x))}</span><span></span>${i === sel.selectedIndex ? '<span class="ck" aria-hidden="true">✓</span>' : "<span></span>"}</button>`; });
+      if (og !== null && og !== lastG) { lastG = og; out += `<div class="sheet-grp cat" data-grp="${html(og)}">${catIcon(og)} ${html(og)}</div>`; }
+      out += `<button type="button" data-s="${html(((og || "") + " " + x.g + " " + x.s + " " + optName(x)).toLowerCase())}" data-og="${html(og || "")}" class="sheet-item cat${og !== null ? " in" : ""}${i === sel.selectedIndex ? " on" : ""}" data-pick="${i}"><span class="pi" style="background:${bubble(x.inc ? "income:" + x.s : x.g)}">${optIcon(x)}</span><span class="nm">${html(optName(x))}</span><span></span>${i === sel.selectedIndex ? '<span class="ck" aria-hidden="true">✓</span>' : "<span></span>"}</button>`; });
     $("bank-sheet-h").textContent = sel.dataset.sheet === "group" ? "Choose a category" : sel.dataset.sheet === "income" ? "Choose an income category" : sel.dataset.sheet === "sub" ? (sel.dataset.g ? `${sel.dataset.g}: choose a subcategory` : "Choose a subcategory") : "Choose a category";
     $("bank-sheet-list").innerHTML = out || `<p class="empty">Nothing to pick here yet.</p>`;
     sheetPick = (i) => { sel.selectedIndex = +i; sel.dispatchEvent(new Event("change", { bubbles: true })); syncPickBtn(sel); };
+    $("sheet-q").value = ""; filterSheet();
     $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
     const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").parentElement.scrollTop = 0;
   }
+  // Type part of a name ("groc", "pharm", "netf") to narrow the list; a category's name shows all its subcategories.
+  function filterSheet() {
+    const words = $("sheet-q").value.trim().toLowerCase().split(/\s+/).filter(Boolean), list = $("bank-sheet-list");
+    let shown = 0;
+    list.querySelectorAll("[data-s]").forEach(b => { const ok = words.every(w => b.dataset.s.includes(w)); b.hidden = !ok; if (ok) shown++; });
+    list.querySelectorAll(".sheet-grp").forEach(h => { let n = h.nextElementSibling, any = false; while (n && !n.classList.contains("sheet-grp")) { if (!n.hidden) any = true; n = n.nextElementSibling; } h.hidden = !any; });
+    $("sheet-none").hidden = !!shown || !words.length;
+  }
+  $("sheet-q").addEventListener("input", () => { filterSheet(); $("bank-sheet-list").parentElement.scrollTop = 0; });
   function closeBankSheet() { $("bank-sheet").hidden = true; document.body.classList.remove("sheet-open"); sheetPick = null; }
   $("bank-sheet").addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) { const f = sheetPick; closeBankSheet(); if (f) f(b.dataset.pick); return; } if (e.target.id === "bank-sheet") closeBankSheet(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("bank-sheet").hidden) closeBankSheet(); });
