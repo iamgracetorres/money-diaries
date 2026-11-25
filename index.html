@@ -94,6 +94,8 @@ select:disabled { opacity: .55; }
 .tx-top input { font-weight: 500; }
 .tx .amt { font-size: 19px; font-weight: 500; }
 .tag { font-size: 11.5px; color: var(--muted); } .tag.dup { color: var(--expense); font-weight: 500; } .tag.xfer { color: var(--income); font-weight: 500; }
+.ptype.armed { background: var(--warn-soft) !important; color: var(--warn) !important; outline: 1.5px dashed var(--warn); }
+.tx .tx-top .ptype { flex: 0 0 auto; width: auto; align-self: center; }
 .ptype { border: 0; border-radius: 99px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .ptype.expense { background: var(--accent-soft); color: var(--accent-deep); } .ptype.income { background: color-mix(in srgb, var(--income) 15%, transparent); color: var(--income); }
 .icon { border: 0; background: transparent; font-size: 20px; padding: 6px 8px; color: var(--muted); border-radius: 99px; }
@@ -226,7 +228,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 #q-results { margin-top: 10px; background: var(--surface); border-radius: 20px; padding: 10px 12px; box-shadow: var(--shadow); }
 .q-sum { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; padding: 2px 2px 8px; }
 .q-sum .o { color: var(--expense); } .q-sum .i { color: var(--income); } .q-sum .btn { margin-left: auto; }
-body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.searching .tx-bal, body.searching .month-strip, body.searching [data-pane="accounts-list"] { display: none !important; }
+body.searching [data-pane="accounts"] > :not(.search-box):not(.txhead), body.searching .tx-bal, body.searching .month-strip, body.searching [data-pane="accounts-list"] { display: none !important; }
 .modal { position: fixed; inset: 0; z-index: 60; background: rgba(51,45,40,.38); display: grid; place-items: center; padding: 16px; }
 .modal-box { background: var(--surface, #fff); border-radius: 22px; padding: 18px; width: min(380px, 100%); box-shadow: 0 18px 50px rgba(0,0,0,.18); display: grid; gap: 10px; }
 .modal-box h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
@@ -246,7 +248,7 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
 .chip .bklogo { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; }
 #p-bank-logo .bklogo { margin: 0 0 0 6px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.tx-top { display: grid; gap: 6px; margin-bottom: 10px; }
+.txhead { display: grid; gap: 6px; margin-bottom: 10px; }
 .tx-bar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
 .tx-bar-side { display: flex; justify-content: flex-end; }
 .acct-pill { position: relative; justify-self: center; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; background: var(--surface); border-radius: 99px; padding: 8px 16px 8px 8px; box-shadow: var(--shadow); font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--ink); }
@@ -428,7 +430,7 @@ select.sheet-hidden { display: none !important; }
   </div>
 
   <div class="pane" data-pane="accounts" hidden>
-  <section class="tx-top" aria-label="Choose account and month">
+  <section class="txhead" aria-label="Choose account and month">
     <div class="tx-bar">
       <span class="tx-bar-side"></span>
       <button type="button" class="acct-pill" id="bank-pill" aria-label="Choose account" aria-haspopup="dialog"><span id="p-bank-logo"></span><span id="p-bank-name"></span><svg class="chev" width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4-4 4 4M3 11l4 4 4-4"/></svg></button><select id="p-bank" hidden aria-hidden="true" tabindex="-1"></select>
@@ -1429,7 +1431,7 @@ select.sheet-hidden { display: none !important; }
     save(); renderAll();
   });
   function syncRule(x, r) { if (r.type === "income") { x.category = r.category; if (r.paidFrom) x.paidFrom = r.paidFrom; else delete x.paidFrom; } else { x.group = rowGroup(r); x.category = r.category; if (r.sentTo) x.sentTo = r.sentTo; else delete x.sentTo; } }
-  let delArmed = null;
+  let delArmed = null, flipArmed = null;
   $("tx-list").addEventListener("click", e => {
     const o = e.target.closest("[data-open]"); if (o) { openTx = o.dataset.open; renderList(); const ed = document.querySelector(`.tx[data-id="${CSS.escape(openTx)}"]`); if (ed) ed.scrollIntoView({ block: "nearest" }); return; }
     const b = e.target.closest("button[data-act]"); if (!b) return;
@@ -1452,7 +1454,11 @@ select.sheet-hidden { display: none !important; }
     }
     if (b.dataset.act === "inst") { instOpen = r.id; renderList(); return; }
     if (b.dataset.act === "inst-off") { delete r.inst; instOpen = null; r.u = Date.now(); save(); renderAll(); flash("Back to a regular charge."); return; }
-    if (b.dataset.act === "flip") { r.type = r.type === "expense" ? "income" : "expense"; r.category = ""; delete r.group; delete r.paidFrom; delete r.sentTo; r.u = Date.now(); }
+    if (b.dataset.act === "flip" && flipArmed !== r.id) {
+      // Switching money in / money out takes two taps so a stray tap doesn't change it.
+      flipArmed = r.id; b.classList.add("armed"); b.textContent = r.type === "expense" ? "Tap again: make it money in" : "Tap again: make it money out";
+      setTimeout(() => { if (flipArmed === r.id) { flipArmed = null; renderList(); } }, 3000); return; }
+    if (b.dataset.act === "flip") { flipArmed = null; r.type = r.type === "expense" ? "income" : "expense"; r.category = ""; delete r.group; delete r.paidFrom; delete r.sentTo; r.u = Date.now(); }
     if (b.dataset.act === "star") {
       const rule = findRule(r);
       if (rule) { lists.rules = lists.rules.filter(x => x !== rule); flash(`Forgot "${rule.label}".`); }
