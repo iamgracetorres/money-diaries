@@ -1401,7 +1401,7 @@ select.sheet-hidden { display: none !important; }
       : isSplit(r) ? `Split • ${[...new Set(r.parts.map(x => r.type === "income" ? x.category : rowGroup(x)).filter(Boolean))].join(", ") || r.parts.length + " parts"}`
       : missing ? (r.refund ? "↩ Refund · pick its category" : "Pick a category") : r.refund ? [rowGroup(r), shortSub(rowGroup(r), r.category)].filter(Boolean).join(" • ") : r.type === "income" ? (r.category || "Money in")
       : [g, shortSub(g, r.category)].filter(Boolean).join(" • ");
-    const sub = [r.refund ? "↩ Refund" : "", r.sentTo && chargesTotal(r) ? `✂ ${peso(xferAmount(r) ? parseFloat(xferAmount(r)) : 0)} transfer + ${peso(chargesTotal(r))} charges` : "", isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
+    const sub = [r.refund ? "↩ Refund" : "", r.sentTo && chargesTotal(r) ? `✂ ${peso(xferAmount(r) ? parseFloat(xferAmount(r)) : 0)} transfer + ${peso(chargesTotal(r))} expense` : "", isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
     const n = parseFloat(cleanAmount(r.amount));
     const amt = isNaN(n) ? "—" : r.type === "income" ? peso(n) : peso(-n);
     const ic = xfer ? "↔️" : isSplit(r) ? "✂️" : r.refund ? (missing ? "↩️" : catIconHtml(rowGroup(r), r.category)) : r.type === "income" ? catIcon("", r.category) : missing ? "❔" : catIconHtml(g, r.category);
@@ -1468,12 +1468,12 @@ select.sheet-hidden { display: none !important; }
   const chargeTargets = (c) => budgetTargets(c && c.group ? JSON.stringify({ group: c.group, sub: c.category || "" }) : "");
   function chargesBox(r, to) {
     const cs = r.charges || [], tot = chargesTotal(r), left = (parseFloat(cleanAmount(r.amount)) || 0) - tot;
-    return `<div class="split-box charges"><div class="split-head">${cs.length ? `✂ ${peso(Math.max(0, left))} goes to ${html(to)} · ${peso(tot)} charges${left < 0 ? ` · <b class="left">charges are more than the total</b>` : ""}` : "Part of it isn't a transfer? (loan interest, insurance…)"}</div>`
+    return `<div class="split-box charges"><div class="split-head">${cs.length ? `✂ ${peso(Math.max(0, left))} goes to ${html(to)} · ${peso(tot)} expense${cs.length === 1 ? "" : "s"}${left < 0 ? ` · <b class="left">charges are more than the total</b>` : ""}` : "Part of it is an expense? (e.g. a purchase, loan interest, insurance)"}</div>`
       + cs.map((c, i) => `<div class="part" data-ci="${i}">
           <div class="row"><input data-cf="amount" inputmode="decimal" value="${html(cleanAmount(c.amount) ? peso(parseFloat(cleanAmount(c.amount))) : c.amount || "")}" placeholder="₱ 0.00" aria-label="Charge amount"><button type="button" class="btn small danger" data-act="del-charge" style="flex:0 0 auto">Remove</button></div>
           <div class="row"><select data-cf="cat" data-sheet="any" class="${c.group ? "" : "nocat"}"><option value="">Pick a category…</option>${chargeTargets(c)}</select></div>
-          <input data-cf="note" value="${html(c.note || "")}" placeholder="What's this? e.g. Loan interest" aria-label="Charge description"></div>`).join("")
-      + `<div class="split-acts"><button type="button" class="btn small" data-act="add-charge">＋ ${cs.length ? "Add another" : "Split off interest / insurance"}</button></div></div>`;
+          <input data-cf="note" value="${html(c.note || "")}" placeholder="What's this? e.g. Groceries, Loan interest" aria-label="Charge description"></div>`).join("")
+      + `<div class="split-acts"><button type="button" class="btn small" data-act="add-charge">＋ ${cs.length ? "Add another expense" : "Split off an expense"}</button></div></div>`;
   }
   const myDebtOptions = (sel) => `<option value="">Which debt is this for?</option>` + (lists.debts || []).filter(d => !(lists.debtsDeleted || []).includes(d.id)).map(d => `<option value="${html(d.id)}"${d.id === sel ? " selected" : ""}>💳 ${html(d.name)}</option>`).join("");
   const personOptions = (sel) => { const g = groupByName("Debt to me"); return `<option value="">Who paid you back?</option>` + (g ? g.subs : []).map(n => `<option value="${html(n)}"${n === sel ? " selected" : ""}>👤 ${html(n)}</option>`).join(""); };
