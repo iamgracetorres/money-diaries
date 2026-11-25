@@ -210,6 +210,12 @@ h1, h2, .hi, .cell .v, .cell input, .amt-big, .tx .amt, .tabbar button, details 
 h1 { font-weight: 600; letter-spacing: .03em; } h2, details summary { font-weight: 500; } .hi { font-weight: 600; }
 body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.inst-box { background: var(--cream); border-radius: 16px; padding: 10px 12px; display: grid; gap: 8px; margin-top: 8px; }
+.inst-box label.k { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; }
+.inst-sum { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--charcoal); }
+.credit-line { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(120px, 160px) 1fr; gap: 10px; align-items: center; background: var(--surface); border-radius: 18px; padding: 10px 12px; box-shadow: var(--shadow); font-size: 13.5px; }
+.credit-line label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.credit-line #cl-info { display: grid; gap: 2px; } .credit-line .n { color: var(--muted); font-size: 12px; } .credit-line .neg { color: var(--expense); }
 .hm-pick { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
 .hm-pick select { flex: 1; min-width: 0; }
 .hm-pick span { color: var(--muted); font-size: 13px; }
@@ -292,6 +298,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     <div class="cell"><span class="k">Money in</span><span class="v inc" id="b-add">₱ 0.00</span><span class="n" id="b-add-n"></span></div>
     <div class="cell"><span class="k">Money out</span><span class="v exp" id="b-exp">₱ 0.00</span><span class="n" id="b-exp-n"></span></div>
     <div class="cell"><label class="k" for="b-end">Ended with</label><input id="b-end" inputmode="decimal" placeholder="₱ 0.00" autocomplete="off"><span class="n" id="b-end-n"></span></div>
+    <div class="credit-line" id="cl-box" hidden><label>Credit limit<input id="cl-limit" inputmode="decimal" placeholder="₱ 0.00" autocomplete="off"></label><div id="cl-info"></div></div>
     <div class="recon"><span class="badge na" id="recon">Add both balances so I can check the math</span><span class="formula" id="formula"></span></div>
   </section>
 
@@ -495,6 +502,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     if (ch) try { localStorage.setItem(STORE, JSON.stringify({ lists, periods, ui, lastBackup, savedAt: new Date().toISOString() })); } catch (e) {}
   }
   function save() {
+    try { syncInstallments((b, m, c) => period(b, m, c)); } catch (e) { console.warn(e); }
     try { linkTransfers((b, m, c) => period(b, m, c)); } catch (e) { console.warn(e); }
     if (typeof scheduleSync === "function") try { scheduleSync(); } catch (e) {}
     try { localStorage.setItem(STORE, JSON.stringify({ lists, periods, ui, lastBackup, savedAt: new Date().toISOString() })); }
@@ -557,6 +565,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   function mergeExtraLists(L) {
     if (!L) return;
     Object.entries(L.accountTypes || {}).forEach(([a, t]) => { if (!lists.accountTypes[a]) lists.accountTypes[a] = t; });
+    lists.creditLimits = lists.creditLimits || {}; Object.entries(L.creditLimits || {}).forEach(([a, v]) => { if (lists.creditLimits[a] == null) lists.creditLimits[a] = v; });
     const gone = new Set([...(lists.debtsDeleted || []), ...(L.debtsDeleted || [])]); lists.debtsDeleted = [...gone];
     ["debts", "debtLog"].forEach(k => {
       (L[k] || []).forEach(x => { if (gone.has(x.id)) return; const i = lists[k].findIndex(y => y.id === x.id);
@@ -566,7 +575,8 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   }
   // Debt totals from transactions plus entries made on the Debt tab without a bank.
   function debtSummary() {
-    const rows = Object.values(periods).flatMap(p => p.rows.filter(isValid).map(r => ({ r, bank: p.bank })));
+    // Monthly installment charges are left out: the purchase itself already counts.
+    const rows = Object.values(periods).flatMap(p => p.rows.filter(r => isValid(r) && !r.instOf).map(r => ({ r, bank: p.bank })));
     const amt = (x) => parseFloat(cleanAmount(x.amount)) || 0;
     const mine = (lists.debts || []).filter(d => !(lists.debtsDeleted || []).includes(d.id)).map(d => {
       const fromTx = rows.filter(({ r }) => r.debtId === d.id).map(({ r, bank }) => ({ date: r.date, amount: amt(r), note: r.description, bank }));
@@ -678,7 +688,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
       real.pair = o.r.id; o.r.pair = real.id; touch(real, xp); touch(o.r, o.p); drop(x, xp);
     });
     // 2. Spot transfers on their own: same amount, money out on one account and in on another within 2 days, and the description says transfer or names the other account.
-    const loose = [...where.values()].filter(({ r }) => !r.pair && !isXfer(r) && !r.notXfer && ok(r));
+    const loose = [...where.values()].filter(({ r }) => !r.pair && !isXfer(r) && !r.notXfer && !r.inst && !r.instOf && ok(r));
     const says = (r, other) => (XFER_WORDS.test(r.description || "") ? 1 : 0) + (acctWord(other) && compact(r.description).includes(acctWord(other)) ? 1 : 0);
     const cands = [];
     const byAmt = new Map(); loose.forEach(x => { const k = amt(x.r); if (!byAmt.has(k)) byAmt.set(k, []); byAmt.get(k).push(x); });
@@ -710,6 +720,74 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     return changed;
   }
   // ===== end transfers =====
+  // ===== installments (same on both pages) =====
+  // A credit card purchase marked as installment (r.inst = { months, first }) uses up the credit limit in full,
+  // but only the monthly charge lands on each statement. The app adds each month's charge once its billing date arrives
+  // (rows with instOf = the purchase's id). The purchase row itself isn't counted in the month's money out.
+  const isInst = (r) => !!(r && r.inst && r.type === "expense" && +r.inst.months >= 2);
+  const xTodayStr = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const addMonthsTo = (iso, k) => { const [y, m, d] = iso.split("-").map(Number); const t = new Date(y, m - 1 + k, 1); const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+    return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(Math.min(d, last)).padStart(2, "0"); };
+  // Monthly amounts in centavos-exact pesos: the last month takes the rounding difference.
+  function instPlan(r) {
+    const n = Math.round(+r.inst.months), total = parseFloat(cleanAmount(r.amount)) || 0, per = Math.floor(total / n * 100) / 100;
+    return Array.from({ length: n }, (_, i) => ({ no: i + 1, date: addMonthsTo(r.inst.first, i), amount: (i === n - 1 ? Math.round((total - per * (n - 1)) * 100) / 100 : per).toFixed(2) }));
+  }
+  function instStatus(r) {
+    const plan = instPlan(r), t = xTodayStr(), billed = plan.filter(x => x.date <= t);
+    const billedAmt = billed.reduce((a, x) => a + parseFloat(x.amount), 0), total = parseFloat(cleanAmount(r.amount)) || 0;
+    return { plan, per: plan[0] ? parseFloat(plan[0].amount) : 0, billed: billed.length, left: Math.round((total - billedAmt) * 100) / 100, end: plan.length ? plan[plan.length - 1].date : "" };
+  }
+  // Installment amounts not billed yet, per card (they still use up the credit limit).
+  function unbilledByCard() {
+    const out = {}; Object.values(periods).forEach(p => p.rows.forEach(r => { if (isInst(r) && /^\d{4}-\d{2}-\d{2}$/.test(r.inst.first || "")) out[p.bank] = (out[p.bank] || 0) + instStatus(r).left; }));
+    return out;
+  }
+  const INST_WORDS = /install|instl|inst\b|amort|\b\d{1,2}\s*\/\s*\d{1,2}\b|\bipp\b|0%/i;
+  function syncInstallments(getPeriod) {
+    const changed = new Set(), now = Date.now(), t = xTodayStr();
+    const where = new Map(); Object.values(periods).forEach(p => p.rows.forEach(r => where.set(r.id, { r, p })));
+    const drop = (r, p) => { p.rows = p.rows.filter(x => x !== r); (p.deleted = p.deleted || []).push(r.id); where.delete(r.id); changed.add(p); };
+    const kids = new Map(); [...where.values()].forEach(({ r, p }) => { if (r.instOf) { if (!kids.has(r.instOf)) kids.set(r.instOf, []); kids.get(r.instOf).push({ r, p }); } });
+    const copyCat = (k, o, share) => {
+      delete k.group; delete k.parts; k.category = "";
+      if (isSplit(o)) { const tot = parseFloat(cleanAmount(o.amount)) || 1; k.parts = o.parts.map(x => { const y = { amount: (Math.round((parseFloat(cleanAmount(x.amount)) || 0) / tot * share * 100) / 100).toFixed(2), category: x.category || "", note: x.note || "" }; if (x.group) y.group = x.group; return y; });
+        const diff = Math.round((share - k.parts.reduce((a, y) => a + parseFloat(y.amount), 0)) * 100) / 100; k.parts[k.parts.length - 1].amount = (parseFloat(k.parts[k.parts.length - 1].amount) + diff).toFixed(2); }
+      else { k.category = o.category || ""; if (o.group) k.group = o.group; }
+    };
+    const catKey = (r) => JSON.stringify([r.group || "", r.category || "", (r.parts || []).map(x => [x.group || "", x.category || "", x.note || ""])]);
+    // Charges whose purchase is gone or no longer an installment.
+    kids.forEach((list, id) => { const o = where.get(id);
+      if (o && isInst(o.r) && isCredit(o.p.bank)) return;
+      list.forEach(({ r, p }) => { if (r.auto) drop(r, p); else { delete r.instOf; delete r.instNo; r.u = now; changed.add(p); } }); kids.delete(id); });
+    [...where.values()].forEach(({ r: o, p: op }) => {
+      if (!isInst(o) || !isCredit(op.bank) || !/^\d{4}-\d{2}-\d{2}$/.test(o.inst.first || "") || !cleanAmount(o.amount)) return;
+      const plan = instPlan(o), mine = kids.get(o.id) || [];
+      // Auto charges that no longer fit the plan (fewer months, later start) go away.
+      mine.forEach(({ r, p }) => { const x = plan[r.instNo - 1]; if (r.auto && (!x || x.date > t)) drop(r, p); });
+      plan.forEach(x => {
+        if (x.date > t) return;
+        const have = (kids.get(o.id) || []).find(k => k.r.instNo === x.no && where.has(k.r.id));
+        const desc = `${o.description || "Installment"} (${x.no}/${plan.length})`, month = x.date.slice(0, 7);
+        if (have) { const k = have.r; if (!k.auto) return;
+          let moved = false; if (have.p.month !== month) { have.p.rows = have.p.rows.filter(y => y !== k); changed.add(have.p); const np = getPeriod(op.bank, month, true); np.rows.push(k); have.p = np; moved = true; }
+          const want = {}; copyCat(want, o, parseFloat(x.amount));
+          if (moved || k.amount !== x.amount || k.date !== x.date || k.description !== desc || catKey(k) !== catKey(want)) {
+            k.amount = x.amount; k.date = x.date; k.description = desc; copyCat(k, o, parseFloat(x.amount)); k.u = now; changed.add(have.p); }
+          return; }
+        // A real statement line for this month's charge takes the place of the one the app would make.
+        const q = getPeriod(op.bank, month, true);
+        const real = q.rows.find(y => !y.auto && !y.instOf && !isInst(y) && y.type === "expense" && Math.abs((parseFloat(cleanAmount(y.amount)) || 0) - parseFloat(x.amount)) <= 1
+          && (INST_WORDS.test(y.description || "") || compact(y.description).slice(0, 5) === compact(o.description).slice(0, 5)));
+        if (real) { real.instOf = o.id; real.instNo = x.no; if (!real.category && !real.group && !isSplit(real)) copyCat(real, o, parseFloat(cleanAmount(real.amount)) || parseFloat(x.amount)); real.u = now; changed.add(q); }
+        else { const k = { id: uid(), u: now, date: x.date, amount: x.amount, type: "expense", description: desc, category: "", instOf: o.id, instNo: x.no, auto: 1, source: "installment" };
+          copyCat(k, o, parseFloat(x.amount)); q.rows.push(k); q.rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")); changed.add(q); }
+        const ref = { r: real || q.rows.find(y => y.instOf === o.id && y.instNo === x.no), p: q }; if (!kids.has(o.id)) kids.set(o.id, []); kids.get(o.id).push(ref); where.set(ref.r.id, ref);
+      });
+    });
+    return changed;
+  }
+  // ===== end installments =====
   const ordered = () => orderedAccounts();
   const period = (bank = ui.bank, month = ui.month, create = false) => {
     const k = keyOf(bank, month);
@@ -726,7 +804,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     : r.type === "income" ? !lists.income.includes(r.category) : !catOk(groupByName(rowGroup(r)), r.category);
   function totals(p) {
     let add = 0, exp = 0, na = 0, ne = 0;
-    (p ? p.rows : []).filter(isValid).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") { add += n; na++; } else { exp += n; ne++; } });
+    (p ? p.rows : []).filter(r => isValid(r) && !isInst(r)).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") { add += n; na++; } else { exp += n; ne++; } });
     return { add, exp, na, ne };
   }
   const carried = (bank, month) => { const prev = period(bank, shiftMonth(month, -1)); return prev && prev.ending != null ? prev.ending : null; };
@@ -784,6 +862,10 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     $("b-end-n").textContent = credit ? "What you owe now" : "From the statement";
     $("b-add").textContent = peso(t.add); $("b-exp").textContent = peso(t.exp);
     $("b-add-n").textContent = `${t.na} transaction${t.na === 1 ? "" : "s"}`; $("b-exp-n").textContent = `${t.ne} transaction${t.ne === 1 ? "" : "s"}`;
+    { const box = $("cl-box"); box.hidden = !credit;
+      if (credit) { const lim = (lists.creditLimits || {})[ui.bank], ub = unbilledByCard()[ui.bank] || 0, bal = balanceOf(ui.bank), owed = bal && bal.v != null ? bal.v : 0;
+        if (document.activeElement !== $("cl-limit")) $("cl-limit").value = lim != null ? peso(lim) : "";
+        $("cl-info").innerHTML = `${ub ? `<span>🗓 Installments not billed yet <b>${peso(ub)}</b></span>` : ""}${lim != null ? `<span>Available <b class="${lim - owed - ub < 0 ? "neg" : ""}">${peso(lim - owed - ub)}</b></span><span class="n">limit − ${peso(owed)} owed${ub ? " − installments to come" : ""}</span>` : `<span class="n">Add the limit to see how much you can still use.</span>`}`; } }
     const badge = $("recon"), f = $("formula");
     if (b0 == null || !p || p.ending == null) { badge.className = "badge na"; badge.textContent = "Add both balances so I can check the math"; f.textContent = ""; return; }
     const exp = credit ? b0 + t.exp - t.add : b0 + t.add - t.exp, diff = Math.round((p.ending - exp) * 100) / 100;
@@ -791,6 +873,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     if (Math.abs(diff) < 0.01) { badge.className = "badge ok"; badge.textContent = "All balanced, yay!"; }
     else { badge.className = "badge off"; badge.textContent = `Off by ${peso(Math.abs(diff))}`; }
   }
+  $("cl-limit").addEventListener("change", e => { lists.creditLimits = lists.creditLimits || {}; const v = num(e.target.value); if (v == null) delete lists.creditLimits[ui.bank]; else lists.creditLimits[ui.bank] = v; save(); renderAll(); });
   ["b-begin", "b-end"].forEach(id => $(id).addEventListener("change", e => {
     if (id === "b-begin" && carried(ui.bank, ui.month) != null) return;
     const p = period(ui.bank, ui.month, true); p[id === "b-begin" ? "beginning" : "ending"] = num(e.target.value);
@@ -861,16 +944,16 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     const order = Object.keys(days).sort((a, b) => b.localeCompare(a));
     $("tx-list").innerHTML = order.map(d => {
       const list = days[d]; let out = 0, inn = 0;
-      list.filter(isValid).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") inn += n; else out += n; });
+      list.filter(r => isValid(r) && !isInst(r)).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") inn += n; else out += n; });
       const label = d === "no-date" ? "No date" : new Date(d + "T00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       return `<div class="day"><div class="day-head"><span>${label}</span><span>${out ? `<span class="o">−${peso(out)}</span>` : ""}${inn ? `<span class="i">+${peso(inn)}</span>` : ""}</span></div>`
         + list.map(r => r.id === openTx ? txEditor(r, links, dupIds.has(r.id)) : txCompact(r, links, dupIds.has(r.id))).join("") + `</div>`;
     }).join("");
   }
-  let openTx = null;
+  let openTx = null, instOpen = null;
   function txCompact(r, links, dup) {
     const xferTo = links.src.get(r.id);
-    const cat = r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ split ${r.parts.length} ways`
+    const cat = isInst(r) ? `🗓 ${r.inst.months} months · ${[rowGroup(r), r.category].filter(Boolean).join(" › ") || "pick a category"}` : r.instOf ? `🗓 installment · ${[rowGroup(r), r.category].filter(Boolean).join(" › ")}` : r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ split ${r.parts.length} ways`
       : r.type === "income" ? (r.category || "") : [rowGroup(r), r.category].filter(Boolean).join(" › ");
     const missing = needsCat(r);
     const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—";
@@ -901,13 +984,28 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
       else if (r.type === "income") cats = `<div class="row"><select data-f="income-cat" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`;
       else { const g = rowGroup(r); const grp = groupByName(g);
         cats = `<div class="row"><select data-f="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`; }
+      const canInst = isCredit(ui.bank) && r.type === "expense" && !xf && !r.instOf;
+      let instBox = "";
+      if (canInst && (isInst(r) || instOpen === r.id)) {
+        const st = isInst(r) && isDate(r.inst.first) ? instStatus(r) : null;
+        const months = r.inst ? r.inst.months : "", first = r.inst && r.inst.first ? r.inst.first : (isDate(r.date) ? addMonthsTo(r.date, 1) : "");
+        instBox = `<div class="inst-box"><div class="split-head">🗓 Installment</div>
+          <div class="row"><label class="k">How many months<select data-f="inst-months"><option value="">Pick…</option>${[2, 3, 4, 6, 9, 12, 18, 24, 36].map(n => `<option value="${n}"${+months === n ? " selected" : ""}>${n} months</option>`).join("")}</select></label>
+          <label class="k">First billing date<input type="date" data-f="inst-first" value="${html(first)}"></label></div>
+          ${st ? `<p class="inst-sum">${peso(st.per)} a month · ${st.billed} of ${st.plan.length} billed · ${peso(st.left)} not billed yet · last one ${short(st.end)}</p>` : `<p class="inst-sum">Pick the months to start the plan.</p>`}
+          <p class="hint" style="margin:0">The full ${peso(parseFloat(cleanAmount(r.amount)) || 0)} uses up your credit limit now. Only the monthly charge goes on each statement.</p>
+          <button type="button" class="btn ghost small" data-act="inst-off">Not an installment</button></div>`;
+      }
       return `<div class="tx${isValid(r) ? "" : " bad"}" data-id="${r.id}">
         <div class="tx-top"><input data-f="description" value="${html(r.description)}" placeholder="Description" aria-label="Description"><button type="button" class="ptype ${r.type}" data-act="flip">${r.type === "income" ? "in" : "out"}</button></div>
         <div class="row"><input class="amt" data-f="amount" inputmode="decimal" value="${html(amt)}" aria-label="Amount"><input type="date" data-f="date" value="${html(r.date)}" aria-label="Date"></div>
         ${cats}
+        ${instBox}
+        ${r.instOf ? `<span class="tag xfer">🗓 Installment ${r.instNo}${(() => { const o = Object.values(periods).flatMap(q => q.rows).find(y => y.id === r.instOf); return o && o.inst ? ` of ${o.inst.months} · ${html(o.description || "")}` : ""; })()}${r.auto ? " · added for you" : ""}</span>` : ""}
         <div class="tx-top">${dup ? `<span class="tag dup">⚠ Looks like a duplicate</span>` : xf ? `<span class="tag xfer">↔ Transfer ${r.type === "income" ? "from" : "to"} ${html(xf)}${r.pair ? " · on both accounts ✓" : ""}${r.auto ? " · made for you" : ""}</span>` : ""}
           <span style="margin-left:auto"></span>
           <button type="button" class="icon star${rule ? " on" : ""}" data-act="star" aria-label="${rule ? "Forget this vendor" : "Remember this category"}">${rule ? "★" : "☆"}</button>
+          ${canInst && !isInst(r) && instOpen !== r.id ? `<button type="button" class="btn small" data-act="inst">🗓 Installment</button>` : ""}
           ${isSplit(r) || xf ? "" : `<button type="button" class="btn small" data-act="split">✂ Split</button>`}
           <button type="button" class="btn small danger" data-act="del">Remove</button>
           <button type="button" class="btn small" data-act="done">Done</button></div>
@@ -931,6 +1029,12 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     if (f === "date") { r.date = v; if (!isCredit(ui.bank) && isDate(v) && v.slice(0, 7) !== ui.month) { p.rows = p.rows.filter(x => x !== r); period(ui.bank, v.slice(0, 7), true).rows.push(r); flash(`Moved to ${monthLabel(v.slice(0, 7))}`); } }
     if (f === "group") { r.group = v; const g = groupByName(v); if (!g || !g.subs.includes(r.category)) r.category = ""; if (!v) delete r.group; }
     if (f === "sub" || f === "income-cat") r.category = v;
+    if (f === "inst-months" || f === "inst-first") {
+      const cur = r.inst || { months: 0, first: isDate(r.date) ? addMonthsTo(r.date, 1) : "" };
+      if (f === "inst-months") cur.months = +v || 0; else cur.first = v;
+      if (cur.months >= 2 && isDate(cur.first)) { r.inst = cur; instOpen = null; flash(`🗓 ${cur.months} months, starting ${short(cur.first)}`); }
+      else { r.inst = cur; }
+    }
     if (f === "xfer") { delete r.paidFrom; delete r.sentTo; if (v) { if (r.type === "income") r.paidFrom = v; else r.sentTo = v; delete r.notXfer; flash(`↔ Recorded on ${v} too`); } else { r.notXfer = 1; delete r.auto; } }
     const rule = findRule(r);
     if (rule && !rule.parts && (f === "sub" || f === "income-cat" || f === "xfer" || f === "group") && !needsCat(r)) { syncRule(rule, r); flash(`Updated what I remember for "${rule.label}"`); }
@@ -958,6 +1062,8 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
       if (act === "unsplit" || r.parts.length < 2) { const keep = r.parts[0]; if (keep && act !== "unsplit") { r.category = keep.category || ""; if (keep.group) r.group = keep.group; else delete r.group; } delete r.parts; }
       save(); renderAll(); return;
     }
+    if (b.dataset.act === "inst") { instOpen = r.id; renderList(); return; }
+    if (b.dataset.act === "inst-off") { delete r.inst; instOpen = null; r.u = Date.now(); save(); renderAll(); flash("Back to a regular charge."); return; }
     if (b.dataset.act === "flip") { r.type = r.type === "expense" ? "income" : "expense"; r.category = ""; delete r.group; delete r.paidFrom; delete r.sentTo; r.u = Date.now(); }
     if (b.dataset.act === "star") {
       const rule = findRule(r);
@@ -990,6 +1096,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     const links = transferLinks(); const body = [];
     ps.forEach(p => p.rows.filter(r => isValid(r) && splitOk(r) && (!from || r.date >= from) && (!to || r.date <= to)).forEach(r => {
       const amt = cleanAmount(r.amount);
+      if (isInst(r)) return; // its monthly charges export instead
       // Each side of a transfer is its own row, so each exports once on its own account.
       if (r.type === "income" && r.paidFrom) { body.push([r.date, amt, "income", `Transfer from ${r.paidFrom}`, "Transfer", p.bank]); return; }
       if (r.type === "expense" && r.sentTo) { body.push([r.date, amt, "expense", `Transfer to ${r.sentTo}`, "Transfer", p.bank]); return; }
@@ -1387,7 +1494,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     // This month, all banks, by transaction date; own-account transfers and balance adjustments left out.
     const links = transferLinks(); let out = 0, inn = 0, no = 0, ni = 0; const byCat = {};
     Object.values(periods).forEach(p => p.rows.forEach(r => {
-      if (!isValid(r) || r.date.slice(0, 7) < hf || r.date.slice(0, 7) > ht || r.paidFrom || r.sentTo || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
+      if (!isValid(r) || r.date.slice(0, 7) < hf || r.date.slice(0, 7) > ht || isInst(r) || r.paidFrom || r.sentTo || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
       const n = parseFloat(cleanAmount(r.amount));
       if (r.type === "income") { inn += n; ni++; return; }
       out += n; no++;
@@ -1414,11 +1521,13 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
         + (g === "No category" && c.fix ? `<div class="subs"><button type="button" class="subline fixme" data-bank="${html(c.fix.bank)}" data-month="${c.fix.month}"><span>⚠ Pick categories for these</span><span>›</span></button></div>` : "");
     }).join("") : `<p class="empty" style="padding:6px">Nothing spent ${hf === ht && hf === m ? "yet this month" : "in this period"}.</p>`;
     // Accounts
-    const sums = {};
+    const sums = {}, unb = unbilledByCard();
     const row = (b) => { const x = balanceOf(b); const cc = isCredit(b);
       if (x && x.v != null) sums[acctType(b)] = (sums[acctType(b)] || 0) + x.v;
       const sub = !x ? "No data yet" : x.kind === "statement" ? `${cc ? "Statement" : "End of"} ${monthLabel(x.month)}` : x.kind === "running" ? `So far in ${monthLabel(x.month)}` : `${monthLabel(x.month)} · add a starting balance`;
-      return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${html(b)}</span><span class="sub">${sub}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
+      const ub = cc ? (unb[b] || 0) : 0, lim = cc ? (lists.creditLimits || {})[b] : null;
+      const sub2 = sub + (ub ? ` · ${peso(ub)} installments to come` : "") + (lim != null ? ` · ${peso(lim - (x && x.v != null ? x.v : 0) - ub)} available` : "");
+      return `<button type="button" class="acct" data-bank="${html(b)}" data-month="${x ? x.month : ui.month}"><span class="nm">${html(b)}</span><span class="sub">${sub2}</span><span class="val">${x && x.v != null ? peso(x.v) : "—"}${cc && x && x.v != null ? "<small>owed</small>" : ""}</span></button>`; };
     // Accounts with no data yet are tucked behind a link so Home stays short.
     const used = (b) => !!latestPeriod(b);
     const hiddenN = lists.accounts.filter(b => !used(b)).length;
@@ -1453,7 +1562,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
 
   function renderAll() { renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
-  load(); try { if (linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
+  load(); try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
   renderNet(); renderAll(); showTab(ui.tab || "home");
   gdState(gd.on ? (tokenOk() ? "On" : "Signing in…") : "Off"); autoSync();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
