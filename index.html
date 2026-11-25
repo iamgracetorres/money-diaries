@@ -823,6 +823,7 @@ select.sheet-hidden { display: none !important; }
     if (!lists.movedLongTermLoan) { const t = 1795600000010;
       catLog().push({ id: "ltl-del", t, kind: "g", group: "Long-term Loan", from: "Long-term Loan", del: 1 });
       acctLog().push({ id: "ltl-acct", t, from: "Home Mortgage", add: 1, type: "loan" }); lists.movedLongTermLoan = 1; changed = true; }
+    if (!lists.addedLoanInterest) { catLog().push({ id: "loan-int", t: 1795600000020, kind: "g", group: "Loan Interest", from: "Loan Interest", add: 1 }); lists.addedLoanInterest = 1; changed = true; }
     if (applyCatChangesToLists()) changed = true;
     if (applyAcctChangesToLists()) changed = true;
     // Home Mortgage could land in Debit when a sync added the name before its group; put it under Long-term Loans once.
@@ -906,7 +907,7 @@ select.sheet-hidden { display: none !important; }
     "Maintenance": "🔧", "Parking fees": "🅿️", "Petrol": "⛽",
     "Gifts and Donations": "🎁", "Birthday": "🎂", "Charity": "💗", "Christening": "👶", "Christmas Giving": "🎄", "Funeral": "🕊️", "Marriage": "💒",
     "Insurance": "🛡️", "Home Fire/MRI Premiums": "🛡️", "Fees": "💸", "Refunded Expenses": "↩️", "Pass-through Expense": "🔁", "Debt to me": "🤝", "Debt Payments": "🏦",
-    "Salary": "💵", "Freelance": "💻", "Transfers In": "📥", "Interest": "📈", "Refund": "↩️", "Payment": "💳", "Gift": "🎁", "Cashback": "🪙", "Other Income": "💰", "Debt Repayment": "🤝", "Transfer": "↔️", "Adjustment": "⚖️", "Long-term Loan": "🏛️", "Home Mortgage": "🏡"
+    "Salary": "💵", "Freelance": "💻", "Transfers In": "📥", "Interest": "📈", "Refund": "↩️", "Payment": "💳", "Gift": "🎁", "Cashback": "🪙", "Other Income": "💰", "Debt Repayment": "🤝", "Transfer": "↔️", "Adjustment": "⚖️", "Long-term Loan": "🏛️", "Home Mortgage": "🏡", "Loan Interest": "📈"
   };
   // Group-specific overrides where a name means something different under another category.
   const CAT_ICONS_BY_GROUP = { "Vehicle|Maintenance": "🔧", "Investments|Vehicle": "🚗", "Debt to me|*": "👤" };
@@ -941,6 +942,10 @@ select.sheet-hidden { display: none !important; }
   // r.pair points at the other row. Rows made by the app to complete a transfer have auto: 1.
   const XFER_WORDS = /transfer|instapay|pesonet|fund ?trans|send ?money|sent ?to|received ?from|cash ?in|cash ?out|top ?up|topup|withdraw|deposit|xfer|payment ?(to|from|received)|card ?payment|bills ?pay/i;
   const xIsDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+  // A transfer can carry charges that aren't transfers (loan interest, insurance): r.charges = [{ amount, group, category, note }].
+  // The row's amount is the total paid; only what's left after the charges moves to the other account.
+  const chargesTotal = (r) => Math.round((r.charges || []).reduce((a, c) => a + (parseFloat(cleanAmount(c.amount)) || 0), 0) * 100) / 100;
+  const xferAmount = (r) => { const c = r.type === "expense" ? chargesTotal(r) : 0; return c ? cleanAmount((parseFloat(cleanAmount(r.amount)) || 0) - c) : cleanAmount(r.amount); };
   const xferAcct = (r) => r.type === "income" ? r.paidFrom : r.sentTo;
   const isXfer = (r) => !!xferAcct(r);
   const acctWord = (a) => compact(String(a).replace(/\d+/g, "").replace(/\b(main|secured|unibank)\b/gi, ""));
@@ -952,7 +957,7 @@ select.sheet-hidden { display: none !important; }
     const unlink = (r, p) => { delete r.pair; if (r.auto) { drop(r, p); return; } delete r.paidFrom; delete r.sentTo; touch(r, p); };
     const amt = (r) => cleanAmount(r.amount);
     const ok = (r) => xIsDate(r.date) && amt(r) && !isSplit(r);
-    const free = (x, q, other, r, bank) => q.bank === other && x !== r && !x.pair && !x.feeOf && !isSplit(x) && x.type !== r.type && amt(x) === amt(r) && xIsDate(x.date) && dayDiff(x.date, r.date) <= 3
+    const free = (x, q, other, r, bank) => q.bank === other && x !== r && !x.pair && !x.feeOf && !isSplit(x) && x.type !== r.type && xferAmount(x) === xferAmount(r) && xIsDate(x.date) && dayDiff(x.date, r.date) <= 3
       && (!isXfer(x) || xferAcct(x) === bank);
     const monthFor = (bank, date) => date.slice(0, 7);
     // 1. Clean up links that no longer hold.
@@ -969,8 +974,8 @@ select.sheet-hidden { display: none !important; }
         return;
       }
       // Keep an app-made side in step with the real one.
-      if (o.r.auto && !r.auto && (amt(o.r) !== amt(r) || o.r.date !== r.date)) {
-        o.r.amount = r.amount; o.r.date = r.date; touch(o.r, o.p);
+      if (o.r.auto && !r.auto && xferAmount(r) && (amt(o.r) !== xferAmount(r) || o.r.date !== r.date)) {
+        o.r.amount = xferAmount(r); o.r.date = r.date; touch(o.r, o.p);
         const m = monthFor(o.p.bank, r.date || ""); if (xIsDate(r.date) && !isCredit(o.p.bank) && m !== o.p.month) { o.p.rows = o.p.rows.filter(x => x !== o.r); const np = getPeriod(o.p.bank, m, true); np.rows.push(o.r); changed.add(np); where.set(o.r.id, { r: o.r, p: np }); }
       }
     });
@@ -999,14 +1004,14 @@ select.sheet-hidden { display: none !important; }
     });
     // 3. Every transfer needs its other side: link a matching row on the other account, or make one.
     [...where.values()].forEach(({ r, p }) => {
-      if (r.pair || !isXfer(r) || !ok(r)) return;
+      if (r.pair || !isXfer(r) || !ok(r) || !xferAmount(r)) return;
       const other = xferAcct(r); if (other === p.bank || !lists.accounts.includes(other)) return;
       const hit = [...where.values()].find(({ r: x, p: q }) => free(x, q, other, r, p.bank));
       if (hit) {
         const x = hit.r; if (x.type === "income") x.paidFrom = p.bank; else x.sentTo = p.bank;
         x.pair = r.id; r.pair = x.id; touch(x, hit.p); touch(r, p); return;
       }
-      const x = { id: uid(), u: now, date: r.date, amount: amt(r), type: r.type === "income" ? "expense" : "income",
+      const x = { id: uid(), u: now, date: r.date, amount: xferAmount(r), type: r.type === "income" ? "expense" : "income",
         description: r.type === "income" ? `Transfer to ${p.bank}` : `Transfer from ${p.bank}`, category: "", pair: r.id, auto: 1, source: "made from " + p.bank };
       if (x.type === "income") x.paidFrom = p.bank; else x.sentTo = p.bank;
       const q = getPeriod(other, monthFor(other, r.date), true); q.rows.push(x); q.rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
@@ -1357,7 +1362,7 @@ select.sheet-hidden { display: none !important; }
       : isSplit(r) ? `Split • ${[...new Set(r.parts.map(x => r.type === "income" ? x.category : rowGroup(x)).filter(Boolean))].join(", ") || r.parts.length + " parts"}`
       : missing ? "Pick a category" : r.type === "income" ? (r.category || "Money in")
       : [g, shortSub(g, r.category)].filter(Boolean).join(" • ");
-    const sub = [isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
+    const sub = [r.sentTo && chargesTotal(r) ? `✂ ${peso(xferAmount(r) ? parseFloat(xferAmount(r)) : 0)} transfer + ${peso(chargesTotal(r))} charges` : "", isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
     const n = parseFloat(cleanAmount(r.amount));
     const amt = isNaN(n) ? "—" : r.type === "income" ? peso(n) : peso(-n);
     const ic = xfer ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : missing ? "❔" : catIconHtml(g, r.category);
@@ -1375,6 +1380,7 @@ select.sheet-hidden { display: none !important; }
       let cats;
       const xf = xferAcct(r);
       if (xf) cats = `<div class="row"><select data-f="xfer" class="xfer">${paidOptions(xf, r.type)}</select></div>`
+        + (r.type === "expense" ? chargesBox(r, xf) : "")
         + (r.type === "expense" || r.fee ? `<div class="row"><input data-f="fee" inputmode="decimal" placeholder="Transfer fee, if any (₱ 0.00)" aria-label="Transfer fee" value="${r.fee ? html(peso(parseFloat(r.fee))) : ""}"></div>${r.fee ? `<p class="hint" style="margin:0">Recorded as a separate ${peso(parseFloat(r.fee))} Fees expense on ${html(r.type === "expense" ? ui.bank : xf)}.</p>` : ""}` : "");
       else if (isSplit(r)) { const left = splitLeft(r);
         cats = `<div class="split-box"><div class="split-head">✂ Split into ${r.parts.length} parts${Math.abs(left) >= 0.005 ? ` · <b class="left">${left > 0 ? peso(left) + " left to assign" : peso(-left) + " too much"}</b>` : " · adds up ✓"}</div>`
@@ -1417,6 +1423,17 @@ select.sheet-hidden { display: none !important; }
           <button type="button" class="btn small" data-act="done">Done</button></div>
       </div>`;
   }
+  // Interest, insurance and other non-transfer parts of a transfer (e.g. a mortgage payment).
+  const chargeTargets = (c) => budgetTargets(c && c.group ? JSON.stringify({ group: c.group, sub: c.category || "" }) : "");
+  function chargesBox(r, to) {
+    const cs = r.charges || [], tot = chargesTotal(r), left = (parseFloat(cleanAmount(r.amount)) || 0) - tot;
+    return `<div class="split-box charges"><div class="split-head">${cs.length ? `✂ ${peso(Math.max(0, left))} goes to ${html(to)} · ${peso(tot)} charges${left < 0 ? ` · <b class="left">charges are more than the total</b>` : ""}` : "Part of it isn't a transfer? (loan interest, insurance…)"}</div>`
+      + cs.map((c, i) => `<div class="part" data-ci="${i}">
+          <div class="row"><input data-cf="amount" inputmode="decimal" value="${html(cleanAmount(c.amount) ? peso(parseFloat(cleanAmount(c.amount))) : c.amount || "")}" placeholder="₱ 0.00" aria-label="Charge amount"><button type="button" class="btn small danger" data-act="del-charge" style="flex:0 0 auto">Remove</button></div>
+          <div class="row"><select data-cf="cat" data-sheet="any" class="${c.group ? "" : "nocat"}"><option value="">Pick a category…</option>${chargeTargets(c)}</select></div>
+          <input data-cf="note" value="${html(c.note || "")}" placeholder="What's this? e.g. Loan interest" aria-label="Charge description"></div>`).join("")
+      + `<div class="split-acts"><button type="button" class="btn small" data-act="add-charge">＋ ${cs.length ? "Add another" : "Split off interest / insurance"}</button></div></div>`;
+  }
   const splitLeft = (r) => Math.round(((parseFloat(cleanAmount(r.amount)) || 0) - r.parts.reduce((t, x) => t + (parseFloat(cleanAmount(x.amount)) || 0), 0)) * 100) / 100;
   $("tx-list").addEventListener("change", e => {
     const pf = e.target.dataset.pf;
@@ -1427,6 +1444,12 @@ select.sheet-hidden { display: none !important; }
       if (pf === "group") { x.group = v; const g = groupByName(v); if (!g || !g.subs.includes(x.category)) x.category = ""; if (!v) delete x.group; }
       if (pf === "sub" || pf === "income-cat") x.category = v;
       save(); renderAll(); return; }
+    if (e.target.dataset.cf) { const cardC = e.target.closest(".tx"), pC = period(), rC = pC && pC.rows.find(x => x.id === cardC.dataset.id); if (!rC) return;
+      const c = (rC.charges || [])[+e.target.closest("[data-ci]").dataset.ci]; if (!c) return; const v = e.target.value;
+      if (e.target.dataset.cf === "amount") c.amount = cleanAmount(v) || v;
+      if (e.target.dataset.cf === "note") c.note = v;
+      if (e.target.dataset.cf === "cat") { const t = v ? JSON.parse(v) : null; if (t) { c.group = t.group; c.category = t.sub || ""; } else { delete c.group; c.category = ""; } }
+      rC.u = Date.now(); save(); renderAll(); return; }
     const card = e.target.closest(".tx"), f = e.target.dataset.f; if (!card || !f) return;
     const p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     const v = e.target.value; r.u = Date.now();
@@ -1469,6 +1492,8 @@ select.sheet-hidden { display: none !important; }
       if (act === "unsplit" || r.parts.length < 2) { const keep = r.parts[0]; if (keep && act !== "unsplit") { r.category = keep.category || ""; if (keep.group) r.group = keep.group; else delete r.group; } delete r.parts; }
       save(); renderAll(); return;
     }
+    if (b.dataset.act === "add-charge") { r.charges = r.charges || []; r.charges.push({ amount: "", category: "", note: "" }); r.u = Date.now(); save(); renderAll(); return; }
+    if (b.dataset.act === "del-charge") { r.charges.splice(+b.closest("[data-ci]").dataset.ci, 1); if (!r.charges.length) delete r.charges; r.u = Date.now(); save(); renderAll(); return; }
     if (b.dataset.act === "inst") { instOpen = r.id; renderList(); return; }
     if (b.dataset.act === "inst-off") { delete r.inst; instOpen = null; r.u = Date.now(); save(); renderAll(); flash("Back to a regular charge."); return; }
     if (b.dataset.act === "flip" && flipArmed !== r.id) {
@@ -1510,7 +1535,8 @@ select.sheet-hidden { display: none !important; }
       if (isInst(r)) return; // its monthly charges export instead
       // Each side of a transfer is its own row, so each exports once on its own account.
       if (r.type === "income" && r.paidFrom) { body.push([r.date, amt, "income", `Transfer from ${r.paidFrom}`, "Transfer", p.bank]); return; }
-      if (r.type === "expense" && r.sentTo) { body.push([r.date, amt, "expense", `Transfer to ${r.sentTo}`, "Transfer", p.bank]); return; }
+      if (r.type === "expense" && r.sentTo) { body.push([r.date, xferAmount(r), "expense", `Transfer to ${r.sentTo}`, "Transfer", p.bank]);
+        (r.charges || []).forEach(c => { if (cleanAmount(c.amount)) body.push([r.date, cleanAmount(c.amount), "expense", `Split - ${(c.note || "").trim() || r.description}`, catLabel({ ...c, type: "expense" }), p.bank]); }); return; }
       if (isSplit(r)) r.parts.forEach(x => body.push([r.date, cleanAmount(x.amount), r.type, `Split - ${(x.note || "").trim() || r.description}`, catLabel({ ...x, type: r.type }), p.bank]));
       else body.push([r.date, amt, r.type, r.description, catLabel(r), p.bank]);
     }));
@@ -1966,8 +1992,9 @@ select.sheet-hidden { display: none !important; }
   function spentOn(group, sub, from, to) {
     let n = 0;
     Object.values(periods).forEach(p => p.rows.forEach(r => {
-      if (!isValid(r) || r.type !== "expense" || r.sentTo || isInst(r) || r.date < from || r.date > to) return;
+      if (!isValid(r) || r.type !== "expense" || isInst(r) || r.date < from || r.date > to) return;
       const hit = (x) => rowGroup(x) === group && (!sub || x.category === sub);
+      if (r.sentTo) { (r.charges || []).forEach(x => { if (hit(x)) n += parseFloat(cleanAmount(x.amount)) || 0; }); return; }
       if (isSplit(r)) r.parts.forEach(x => { if (hit(x)) n += parseFloat(cleanAmount(x.amount)) || 0; });
       else if (hit(r)) n += parseFloat(cleanAmount(r.amount)) || 0;
     }));
@@ -2132,8 +2159,9 @@ select.sheet-hidden { display: none !important; }
     // This month, all banks, by transaction date; own-account transfers and balance adjustments left out.
     const links = transferLinks(); let out = 0, inn = 0, no = 0, ni = 0; const byCat = {};
     Object.values(periods).forEach(p => p.rows.forEach(r => {
-      if (!isValid(r) || r.date.slice(0, 7) < hf || r.date.slice(0, 7) > ht || isInst(r) || r.paidFrom || r.sentTo || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
-      const n = parseFloat(cleanAmount(r.amount));
+      const chg = r.type === "expense" && r.sentTo && (r.charges || []).length;
+      if (!isValid(r) || r.date.slice(0, 7) < hf || r.date.slice(0, 7) > ht || isInst(r) || r.paidFrom || (r.sentTo && !chg) || (r.type === "income" ? r.category === "Adjustment" : rowGroup(r) === "Adjustment")) return;
+      const n = chg ? chargesTotal(r) : parseFloat(cleanAmount(r.amount));
       if (r.type === "income") { inn += n; ni++; return; }
       out += n; no++;
       // Group → subcategory. Spending saved with only the main category is listed separately so it can be fixed.
@@ -2142,7 +2170,8 @@ select.sheet-hidden { display: none !important; }
         const c = byCat[g] = byCat[g] || { t: 0, subs: {}, fix: null }; c.t += a;
         if (sub) { c.subs[sub] = (c.subs[sub] || 0) + a; if (sub === "__main" && !c.fix) c.fix = { bank: p.bank, month: p.month }; }
         if (g === "No category" && !c.fix) c.fix = { bank: p.bank, month: p.month }; };
-      if (isSplit(r)) r.parts.forEach(x => add(x, parseFloat(cleanAmount(x.amount)) || 0)); else add(r, n);
+      if (chg) r.charges.forEach(x => add(x, parseFloat(cleanAmount(x.amount)) || 0));
+      else if (isSplit(r)) r.parts.forEach(x => add(x, parseFloat(cleanAmount(x.amount)) || 0)); else add(r, n);
     }));
     const yr = (x) => x.slice(0, 4), mo = (x) => new Date(x + "-01T00:00").toLocaleDateString("en-US", { month: "short" });
     $("h-month").textContent = hf === ht ? (hf === m ? "This month" : hf === shiftMonth(m, -1) ? "Last month" : monthLabel(hf)) : "These months";
