@@ -1148,7 +1148,15 @@ select.sheet-hidden { display: none !important; }
     (p ? p.rows : []).filter(r => isValid(r) && !isInst(r)).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") { add += n; na++; } else { exp += n; ne++; } });
     return { add, exp, na, ne };
   }
-  const carried = (bank, month) => { const prev = period(bank, shiftMonth(month, -1)); return prev && prev.ending != null ? prev.ending : null; };
+  // Each month starts where the last one ended: the ending you typed, or last month's beginning + money in − money out
+  // (months with no transactions pass their balance straight through).
+  const firstMonthOf = (bank) => Object.values(periods).filter(q => q.bank === bank && (q.rows.length || q.beginning != null || q.ending != null)).reduce((m, q) => !m || q.month < m ? q.month : m, "");
+  function endOf(bank, month) {
+    const p = period(bank, month); if (p && p.ending != null) return p.ending;
+    const b = beginOf(bank, month); if (b == null) return null; const t = totals(p);
+    return Math.round((isCredit(bank) ? b + t.exp - t.add : b + t.add - t.exp) * 100) / 100;
+  }
+  const carried = (bank, month) => { const f = firstMonthOf(bank); if (!f || month <= f) return null; return endOf(bank, shiftMonth(month, -1)); };
   const beginOf = (bank, month) => { const c = carried(bank, month); if (c != null) return c; const p = period(bank, month); return p && p.beginning != null ? p.beginning : null; };
 
   // ---------- stars & renames (same rules as the online page) ----------
