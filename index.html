@@ -539,6 +539,9 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     if (!lists.expenseGroups.some(g => g.name === "Debt to me")) { lists.expenseGroups.push({ name: "Debt to me", subs: ["Ajie", "Ate", "Nanay", "Ate Anna"] }); changed = true; }
     if (!lists.expenseGroups.some(g => g.name === "Debt Payments")) { lists.expenseGroups.push({ name: "Debt Payments", subs: [] }); changed = true; }
     if (!lists.income.includes("Debt Repayment")) { lists.income.push("Debt Repayment"); changed = true; }
+    // Accounts added later (kept added once, so deleting one in Settings sticks).
+    if (!lists.added9557) { if (!lists.accounts.includes("BPI 9557")) lists.accounts.push("BPI 9557"); lists.accountTypes["BPI 9557"] = "credit";
+      lists.creditAccounts = lists.accounts.filter(isCredit); lists.added9557 = 1; changed = true; }
     // Adjustment: for fixing a beginning balance. Money in or money out, so it's in both lists.
     if ((lists.adjVersion || 0) < 1) { if (!lists.expenseGroups.some(g => g.name === "Adjustment")) lists.expenseGroups.push({ name: "Adjustment", subs: [] });
       if (!lists.income.includes("Adjustment")) lists.income.push("Adjustment"); lists.adjVersion = 1; changed = true; }
