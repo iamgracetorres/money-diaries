@@ -286,6 +286,28 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
 .txc .a.exp { color: var(--expense); } .txc .a.inc { color: #3a86d1; } .txc .a.plan { color: var(--muted); }
 .txc.xf .a.inc { color: #3a86d1; }
 .daycard .tx { margin: 6px 0 10px; }
+.a-bank-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.a-bank-row .k { font-weight: 600; font-size: 14px; color: var(--charcoal); }
+button.acct-pill { border: 0; cursor: pointer; }
+.acct-pill.small { font-size: 16px; padding: 6px 14px 6px 6px; box-shadow: none; border: 1px solid var(--line); background: var(--cream); }
+.acct-pill.small .bklogo { width: 28px; height: 28px; }
+.acct-pill.small .bklogo.em { line-height: 28px; font-size: 17px; }
+.sheet-bg { position: fixed; inset: 0; z-index: 70; background: rgba(51,45,40,.38); display: flex; align-items: flex-end; justify-content: center; }
+.sheet-bg[hidden] { display: none; }
+.sheet { background: var(--bg); width: min(520px, 100%); max-height: 78vh; overflow-y: auto; border-radius: 26px 26px 0 0; padding: 8px 14px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 -12px 40px rgba(0,0,0,.18); animation: sheetUp .22s ease-out; }
+@keyframes sheetUp { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+.sheet-grip { width: 40px; height: 5px; border-radius: 99px; background: var(--line); margin: 4px auto 8px; }
+.sheet h3 { margin: 0 0 6px; text-align: center; font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+.sheet-grp { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 12px 4px 4px; }
+.sheet-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; color: inherit; background: var(--surface); border: 0; border-radius: 16px; padding: 10px 12px; margin: 4px 0; min-height: 56px; }
+.sheet-item .bklogo { width: 36px; height: 36px; border-radius: 50%; margin: 0; }
+.sheet-item .bklogo.em { line-height: 36px; font-size: 20px; background: var(--cream); }
+.sheet-item .nm { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-item .bv { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sheet-item .ck { color: var(--accent-deep); font-weight: 700; }
+.sheet-item.on { outline: 2px solid var(--accent); }
+body.sheet-open { overflow: hidden; }
 </style>
 </head>
 <body>
@@ -330,7 +352,7 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
   <section class="tx-top" aria-label="Choose account and month">
     <div class="tx-bar">
       <span class="tx-bar-side"></span>
-      <label class="acct-pill"><span id="p-bank-logo"></span><span id="p-bank-name"></span><svg class="chev" width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4-4 4 4M3 11l4 4 4-4"/></svg><select id="p-bank" aria-label="Which account?"></select></label>
+      <button type="button" class="acct-pill" id="bank-pill" aria-label="Choose account" aria-haspopup="dialog"><span id="p-bank-logo"></span><span id="p-bank-name"></span><svg class="chev" width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4-4 4 4M3 11l4 4 4-4"/></svg></button><select id="p-bank" hidden aria-hidden="true" tabindex="-1"></select>
       <span class="tx-bar-side"><button type="button" class="icon-btn" id="q-toggle" aria-label="Search all banks"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></span>
     </div>
     <div class="tx-bal"><span class="k" id="tx-bal-k">Balance</span><span class="v" id="tx-bal-v">—</span><span class="io" id="tx-io"></span></div>
@@ -357,7 +379,7 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
   <div class="pane" data-pane="add" hidden>
   <section class="card" id="add-card" aria-labelledby="add-h">
     <div class="card-head"><h2 id="add-h">Add a transaction</h2></div>
-    <label for="a-bank" style="margin-bottom:10px">Bank<select id="a-bank"></select></label>
+    <div class="a-bank-row"><span class="k">Account</span><button type="button" class="acct-pill small" id="a-bank-pill" aria-haspopup="dialog"><span id="a-bank-logo"></span><span id="a-bank-name"></span><svg class="chev" width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4-4 4 4M3 11l4 4 4-4"/></svg></button><select id="a-bank" hidden aria-hidden="true" tabindex="-1"></select></div>
     <form class="add" id="add-form" autocomplete="off">
       <div class="seg" role="group" aria-label="Type" id="a-type">
         <button type="button" data-v="expense" aria-pressed="true">Money out</button>
@@ -465,6 +487,7 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
   </div>
 </div>
 <button class="fab" type="button" id="fab" aria-label="Add a transaction">+</button>
+<div class="sheet-bg" id="bank-sheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bank-sheet-h"><div class="sheet-grip" aria-hidden="true"></div><h3 id="bank-sheet-h">Choose an account</h3><div id="bank-sheet-list"></div></div></div>
 <nav class="tabbar" aria-label="Sections">
   <button type="button" data-tab="home"><span>⌂</span>Home</button>
   <button type="button" data-tab="accounts"><span>▤</span>Transactions</button>
@@ -950,6 +973,22 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
   function go(bank, month) { ui.bank = bank; ui.month = month; save(); renderAll(); }
   $("p-bank").addEventListener("change", e => go(e.target.value, ui.month));
   $("p-month").addEventListener("change", e => go(ui.bank, e.target.value));
+  // Account chooser: a sheet with each bank's logo, grouped like Home, with the latest balance.
+  let sheetPick = null;
+  function openBankSheet(cur, onPick) {
+    sheetPick = onPick;
+    $("bank-sheet-list").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); if (!xs.length) return "";
+      return `<div class="sheet-grp">${label}</div>` + xs.map(b => { const x = typeof balanceOf === "function" ? balanceOf(b) : null;
+        return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
+    $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
+    const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").scrollTop = 0;
+    setTimeout(() => { const f = $("bank-sheet-list").querySelector(".on") || $("bank-sheet-list").querySelector(".sheet-item"); if (f) f.focus({ preventScroll: true }); }, 30);
+  }
+  function closeBankSheet() { $("bank-sheet").hidden = true; document.body.classList.remove("sheet-open"); sheetPick = null; }
+  $("bank-sheet").addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) { const f = sheetPick; closeBankSheet(); if (f) f(b.dataset.pick); return; } if (e.target.id === "bank-sheet") closeBankSheet(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("bank-sheet").hidden) closeBankSheet(); });
+  $("bank-pill").addEventListener("click", () => openBankSheet(ui.bank, b => { openTx = null; go(b, ui.month); }));
+  $("a-bank-pill").addEventListener("click", () => openBankSheet(ui.bank, b => { const sel = $("a-bank"); sel.value = b; sel.dispatchEvent(new Event("change")); }));
   $("month-strip").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) { openTx = null; go(ui.bank, b.dataset.m); } });
   $("q-toggle").addEventListener("click", () => { const box = $("search-box"); box.hidden = !box.hidden; if (!box.hidden) $("q").focus(); else { $("q").value = ""; renderSearch(); } });
   $("m-prev").addEventListener("click", () => go(ui.bank, shiftMonth(ui.month, -1)));
@@ -962,7 +1001,7 @@ body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.sea
   function incomeOptions(sel) { return `<option value="">Category…</option>` + lists.income.map(x => `<option value="${html(x)}"${x === sel ? " selected" : ""}>${catIcon("", x)} ${html(x)}</option>`).join(""); }
   function paidOptions(sel, type = "income") { return `<option value="">Not a transfer</option>` + acctOptgroups(sel, a => a !== ui.bank, a => (type === "income" ? "↔ From " : "↔ To ") + a); }
   function renderAddForm(keep) {
-    $("a-bank").innerHTML = acctOptgroups(ui.bank);
+    $("a-bank").innerHTML = acctOptgroups(ui.bank); $("a-bank-logo").innerHTML = bankLogo(ui.bank); $("a-bank-name").textContent = ui.bank;
     document.querySelectorAll("#a-type button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === addType)));
     const g = $("a-group"), s = $("a-sub"), pf = $("a-paid");
     const gv = keep ? g.value : "", sv = keep ? s.value : "";
