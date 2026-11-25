@@ -948,6 +948,12 @@ select.sheet-hidden { display: none !important; }
   const xIsDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
   // A transfer can carry charges that aren't transfers (loan interest, insurance): r.charges = [{ amount, group, category, note }].
   // The row's amount is the total paid; only what's left after the charges moves to the other account.
+  // Remembered charges on a transfer (e.g. mortgage interest + insurance): same total → same amounts, otherwise scaled.
+  function scaledCharges(x, total) {
+    const t0 = parseFloat(x.total) || 0, t = parseFloat(cleanAmount(total)) || 0, f = t0 && t ? t / t0 : 1;
+    return (x.charges || []).map(c => { const y = { amount: cleanAmount(Math.round((parseFloat(c.amount) || 0) * f * 100) / 100) || "", category: c.category || "", note: c.note || "" }; if (c.group) y.group = c.group; return y; });
+  }
+  const chargesForRule = (r) => (r.charges || []).filter(c => cleanAmount(c.amount)).map(c => { const y = { amount: cleanAmount(c.amount), category: c.category || "", note: c.note || "" }; if (c.group) y.group = c.group; return y; });
   const chargesTotal = (r) => Math.round((r.charges || []).reduce((a, c) => a + (parseFloat(cleanAmount(c.amount)) || 0), 0) * 100) / 100;
   const xferAmount = (r) => { const c = r.type === "expense" ? chargesTotal(r) : 0; return c ? cleanAmount((parseFloat(cleanAmount(r.amount)) || 0) - c) : cleanAmount(r.amount); };
   const xferAcct = (r) => r.type === "income" ? r.paidFrom : r.sentTo;
@@ -1147,7 +1153,7 @@ select.sheet-hidden { display: none !important; }
 
   // ---------- stars & renames (same rules as the online page) ----------
   const findRule = (r) => { const c = compact(r.description); if (c.length < 3) return null; return lists.rules.find(x => x.type === r.type && (c.includes(x.key) || (x.key.includes(c) && c.length >= 5))) || null; };
-  const ruleCat = (x) => x.paidFrom ? `transfer from ${x.paidFrom}` : x.sentTo ? `transfer to ${x.sentTo}` : x.parts ? `split ${x.parts.length} ways` : x.type === "income" ? x.category : x.category ? `${x.group} > ${x.category}` : x.group;
+  const ruleCat = (x) => x.paidFrom ? `transfer from ${x.paidFrom}` : x.sentTo ? `transfer to ${x.sentTo}${(x.charges || []).length ? ` + ${x.charges.length} charge${x.charges.length === 1 ? "" : "s"} (${x.charges.map(c => c.category || c.group || "?").join(", ")})` : ""}` : x.parts ? `split ${x.parts.length} ways` : x.type === "income" ? x.category : x.category ? `${x.group} > ${x.category}` : x.group;
   function applyRule(r) {
     const x = findRule(r); if (!x) return false;
     if (x.parts) {
@@ -1160,7 +1166,7 @@ select.sheet-hidden { display: none !important; }
       parts.forEach(y => { y.amount = cleanAmount(y.amount) || y.amount; }); r.parts = parts; r.category = ""; delete r.group; return true;
     }
     if (x.type === "income") { if (x.paidFrom && lists.accounts.includes(x.paidFrom)) { r.paidFrom = x.paidFrom; return true; } if (!lists.income.includes(x.category)) return false; r.category = x.category; delete r.group; return true; }
-    if (x.sentTo && lists.accounts.includes(x.sentTo)) { r.sentTo = x.sentTo; return true; }
+    if (x.sentTo && lists.accounts.includes(x.sentTo)) { r.sentTo = x.sentTo; if ((x.charges || []).length && !(r.charges || []).length) r.charges = scaledCharges(x, r.amount); return true; }
     const g = groupByName(x.group); if (!catOk(g, x.category)) return false; r.group = x.group; r.category = x.category; return true;
   }
   function renameOne(r) { const c = compact(r.description); if (!c) return false; const x = lists.renames.find(y => y.key && c.includes(y.key) && r.description !== y.to); if (!x) return false; r.description = x.to; return true; }
@@ -1337,6 +1343,7 @@ select.sheet-hidden { display: none !important; }
     if ((r.paidFrom || r.sentTo) && cleanAmount($("a-fee").value)) r.fee = cleanAmount($("a-fee").value);
     renameOne(r);
     const blank = r.paidFrom || r.sentTo ? false : needsCat(r); if (blank || findRule(r) && findRule(r).parts) applyRule(r);
+    { const x = findRule(r); if (x && r.sentTo && x.sentTo === r.sentTo && (x.charges || []).length && !(r.charges || []).length) r.charges = scaledCharges(x, r.amount); }
     const month = isCredit(ui.bank) ? ui.month : r.date.slice(0, 7);
     period(ui.bank, month, true).rows.push(r);
     period(ui.bank, month).rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
@@ -1464,7 +1471,7 @@ select.sheet-hidden { display: none !important; }
       if (e.target.dataset.cf === "amount") c.amount = cleanAmount(v) || v;
       if (e.target.dataset.cf === "note") c.note = v;
       if (e.target.dataset.cf === "cat") { const t = v ? JSON.parse(v) : null; if (t) { c.group = t.group; c.category = t.sub || ""; } else { delete c.group; c.category = ""; } }
-      rC.u = Date.now(); save(); renderAll(); return; }
+      rC.u = Date.now(); { const rl = findRule(rC); if (rl && rl.sentTo) { syncRule(rl, rC); } } save(); renderAll(); return; }
     const card = e.target.closest(".tx"), f = e.target.dataset.f; if (!card || !f) return;
     const p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     const v = e.target.value; r.u = Date.now();
@@ -1485,7 +1492,7 @@ select.sheet-hidden { display: none !important; }
     if (rule && !rule.parts && (f === "sub" || f === "income-cat" || f === "xfer" || f === "group") && !needsCat(r)) { syncRule(rule, r); flash(`Updated what I remember for "${rule.label}"`); }
     save(); renderAll();
   });
-  function syncRule(x, r) { if (r.type === "income") { x.category = r.category; if (r.paidFrom) x.paidFrom = r.paidFrom; else delete x.paidFrom; } else { x.group = rowGroup(r); x.category = r.category; if (r.sentTo) x.sentTo = r.sentTo; else delete x.sentTo; } }
+  function syncRule(x, r) { if (r.type === "income") { x.category = r.category; if (r.paidFrom) x.paidFrom = r.paidFrom; else delete x.paidFrom; } else { x.group = rowGroup(r); x.category = r.category; if (r.sentTo) { x.sentTo = r.sentTo; const cs = chargesForRule(r); if (cs.length) { x.charges = cs; x.total = cleanAmount(r.amount); } else { delete x.charges; } } else { delete x.sentTo; delete x.charges; } } }
   let delArmed = null, flipArmed = null;
   $("tx-list").addEventListener("click", e => {
     const o = e.target.closest("[data-open]"); if (o) { openTx = o.dataset.open; renderList(); const ed = document.querySelector(`.tx[data-id="${CSS.escape(openTx)}"]`); if (ed) ed.scrollIntoView({ block: "nearest" }); return; }
@@ -1508,7 +1515,7 @@ select.sheet-hidden { display: none !important; }
       save(); renderAll(); return;
     }
     if (b.dataset.act === "add-charge") { r.charges = r.charges || []; r.charges.push({ amount: "", category: "", note: "" }); r.u = Date.now(); save(); renderAll(); return; }
-    if (b.dataset.act === "del-charge") { r.charges.splice(+b.closest("[data-ci]").dataset.ci, 1); if (!r.charges.length) delete r.charges; r.u = Date.now(); save(); renderAll(); return; }
+    if (b.dataset.act === "del-charge") { r.charges.splice(+b.closest("[data-ci]").dataset.ci, 1); if (!r.charges.length) delete r.charges; r.u = Date.now(); { const rl = findRule(r); if (rl && rl.sentTo) syncRule(rl, r); } save(); renderAll(); return; }
     if (b.dataset.act === "inst") { instOpen = r.id; renderList(); return; }
     if (b.dataset.act === "inst-off") { delete r.inst; instOpen = null; r.u = Date.now(); save(); renderAll(); flash("Back to a regular charge."); return; }
     if (b.dataset.act === "flip" && flipArmed !== r.id) {
@@ -1525,7 +1532,7 @@ select.sheet-hidden { display: none !important; }
         if (r.auto) { flash("This one was made for a transfer. Star the other side instead."); return; }
         const nr = { key: compact(r.description), label: r.description, type: r.type };
         if (isSplit(r)) { nr.total = cleanAmount(r.amount); nr.parts = r.parts.map(x => { const t = { amount: cleanAmount(x.amount), category: x.category || "" }; const g = rowGroup(x); if (g && r.type === "expense") t.group = g; if (x.note && x.note !== r.description) t.note = x.note; return t; }); }
-        else { nr.category = r.category; if (r.type === "expense") nr.group = rowGroup(r); if (r.paidFrom) nr.paidFrom = r.paidFrom; if (r.sentTo) nr.sentTo = r.sentTo; }
+        else { nr.category = r.category; if (r.type === "expense") nr.group = rowGroup(r); if (r.paidFrom) nr.paidFrom = r.paidFrom; if (r.sentTo) { nr.sentTo = r.sentTo; const cs = chargesForRule(r); if (cs.length) { nr.charges = cs; nr.total = cleanAmount(r.amount); } } }
         lists.rules.push(nr); flash(`★ Remembered: ${r.description} → ${ruleCat(nr)}`);
       }
     }
