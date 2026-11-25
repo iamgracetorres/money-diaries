@@ -874,14 +874,16 @@ select.sheet-hidden { display: none !important; }
       return { debt: d, paid, total, remaining: Math.round((total - paid) * 100) / 100, pays };
     });
     const g = lists.expenseGroups.find(x => x.name === "Debt to me");
-    const people = [...new Set([...(g ? g.subs : []), ...(lists.debtLog || []).filter(e => e.kind === "theirs").map(e => e.ref), ...rows.filter(({ r }) => r.debtPerson).map(({ r }) => r.debtPerson)])];
+    const people = [...new Set([...(g ? g.subs : []), ...(lists.debtLog || []).filter(e => e.kind === "theirs").map(e => e.ref), ...rows.filter(({ r }) => r.debtPerson).map(({ r }) => r.debtPerson),
+      ...rows.flatMap(({ r }) => r.type === "income" && isSplit(r) ? r.parts.filter(x => x.debtPerson).map(x => x.debtPerson) : [])])];
     const theirs = people.map(person => {
       const items = [];
       rows.forEach(({ r, bank }) => {
         if (r.type === "expense") {
           if (isSplit(r)) r.parts.forEach(x => { if (rowGroup(x) === "Debt to me" && x.category === person) items.push({ date: r.date, amount: amt(x), dir: "lent", note: x.note || r.description, vendor: r.description, memo: (x.note || "").trim() !== (r.description || "").trim() ? (x.note || "").trim() : "", bank }); });
           else if (rowGroup(r) === "Debt to me" && r.category === person) items.push({ date: r.date, amount: amt(r), dir: "lent", note: r.description, vendor: r.description, memo: r.note || "", bank });
-        } else if (r.debtPerson === person) items.push({ date: r.date, amount: amt(r), dir: "paid", note: r.description, vendor: r.description, memo: r.note || "", bank });
+        } else if (isSplit(r)) r.parts.forEach(x => { if (x.debtPerson === person && x.category === "Debt Repayment") items.push({ date: r.date, amount: amt(x), dir: "paid", note: x.note || r.description, vendor: r.description, memo: (x.note || "").trim() !== (r.description || "").trim() ? (x.note || "").trim() : "", bank }); });
+        else if (r.debtPerson === person) items.push({ date: r.date, amount: amt(r), dir: "paid", note: r.description, vendor: r.description, memo: r.note || "", bank });
       });
       (lists.debtLog || []).filter(e => e.kind === "theirs" && e.ref === person).forEach(e => items.push({ date: e.date, amount: amt(e), dir: e.dir, note: e.note || (e.dir === "paid" ? "Paid back" : "Lent"), vendor: e.dir === "paid" ? "Paid back" : "Lent", memo: e.note && !/^(paid back|lent)$/i.test(e.note) ? e.note : "", id: e.id }));
       items.sort((a, b) => b.date.localeCompare(a.date));
@@ -1422,11 +1424,11 @@ select.sheet-hidden { display: none !important; }
             return `<div class="part" data-i="${i}">
               <div class="row"><input data-pf="amount" inputmode="decimal" value="${html(cleanAmount(x.amount) ? peso(parseFloat(cleanAmount(x.amount))) : x.amount || "")}" placeholder="₱ 0.00" aria-label="Part ${i + 1} amount"><button type="button" class="btn small danger" data-act="del-part" style="flex:0 0 auto">Remove part</button></div>
               <input data-pf="note" value="${html(x.note || "")}" placeholder="What's this part?" aria-label="Part ${i + 1} description">
-              ${r.type === "income" ? `<select data-pf="income-cat" data-sheet="income">${incomeOptions(x.category)}</select>`
+              ${r.type === "income" ? `<select data-pf="income-cat" data-sheet="income">${incomeOptions(x.category)}</select>${x.category === "Debt Repayment" ? `<select data-pf="debtPerson" class="${x.debtPerson ? "" : "nocat"}" aria-label="Who paid">${personOptions(x.debtPerson)}</select>` : ""}`
                 : `<div class="row"><select data-pf="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>`}
             </div>`; }).join("")
           + `<div class="split-acts"><button type="button" class="btn small" data-act="add-part">+ Add part</button>${left > 0.004 ? `<button type="button" class="btn small" data-act="fill-left">Put ${peso(left)} in the last part</button>` : ""}<button type="button" class="btn ghost small" data-act="unsplit">Undo split</button></div></div>`; }
-      else if (r.type === "income" && !r.refund) cats = `<div class="row"><select data-f="income-cat" data-sheet="income" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div><button type="button" class="btn small ghost" data-act="refund-on" style="justify-self:start">↩ It's a refund of an expense</button>`;
+      else if (r.type === "income" && !r.refund) cats = `<div class="row"><select data-f="income-cat" data-sheet="income" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select>${r.category === "Debt Repayment" ? `<select data-f="debtPerson" class="${r.debtPerson ? "" : "nocat"}" aria-label="Who paid">${personOptions(r.debtPerson)}</select>` : ""}</div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div><button type="button" class="btn small ghost" data-act="refund-on" style="justify-self:start">↩ It's a refund of an expense</button>`;
       else if (r.refund) { const g = rowGroup(r); const grp = groupByName(g);
         cats = `<span class="tag xfer">↩ Refund: takes this back off the spending below</span><div class="row"><select data-f="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div><button type="button" class="btn small ghost" data-act="refund-off" style="justify-self:start">Not a refund</button>`; }
       else { const g = rowGroup(r); const grp = groupByName(g);
@@ -1470,6 +1472,7 @@ select.sheet-hidden { display: none !important; }
           <input data-cf="note" value="${html(c.note || "")}" placeholder="What's this? e.g. Loan interest" aria-label="Charge description"></div>`).join("")
       + `<div class="split-acts"><button type="button" class="btn small" data-act="add-charge">＋ ${cs.length ? "Add another" : "Split off interest / insurance"}</button></div></div>`;
   }
+  const personOptions = (sel) => { const g = groupByName("Debt to me"); return `<option value="">Who paid you back?</option>` + (g ? g.subs : []).map(n => `<option value="${html(n)}"${n === sel ? " selected" : ""}>👤 ${html(n)}</option>`).join(""); };
   const splitLeft = (r) => Math.round(((parseFloat(cleanAmount(r.amount)) || 0) - r.parts.reduce((t, x) => t + (parseFloat(cleanAmount(x.amount)) || 0), 0)) * 100) / 100;
   $("tx-list").addEventListener("change", e => {
     const pf = e.target.dataset.pf;
@@ -1478,7 +1481,8 @@ select.sheet-hidden { display: none !important; }
       if (pf === "amount") x.amount = cleanAmount(v) || v;
       if (pf === "note") x.note = v;
       if (pf === "group") { x.group = v; const g = groupByName(v); if (!g || !g.subs.includes(x.category)) x.category = ""; if (!v) delete x.group; }
-      if (pf === "sub" || pf === "income-cat") x.category = v;
+      if (pf === "sub" || pf === "income-cat") { x.category = v; if (v !== "Debt Repayment") delete x.debtPerson; }
+      if (pf === "debtPerson") { if (v) x.debtPerson = v; else delete x.debtPerson; }
       save(); renderAll(); return; }
     if (e.target.dataset.cf) { const cardC = e.target.closest(".tx"), pC = period(), rC = pC && pC.rows.find(x => x.id === cardC.dataset.id); if (!rC) return;
       const c = (rC.charges || [])[+e.target.closest("[data-ci]").dataset.ci]; if (!c) return; const v = e.target.value;
@@ -1494,6 +1498,7 @@ select.sheet-hidden { display: none !important; }
     if (f === "date") { r.date = v; if (!isCredit(ui.bank) && isDate(v) && v.slice(0, 7) !== ui.month) { p.rows = p.rows.filter(x => x !== r); period(ui.bank, v.slice(0, 7), true).rows.push(r); flash(`Moved to ${monthLabel(v.slice(0, 7))}`); } }
     if (f === "group") { r.group = v; const g = groupByName(v); if (!g || !g.subs.includes(r.category)) r.category = ""; if (!v) delete r.group; }
     if (f === "sub" || f === "income-cat") r.category = v;
+    if (f === "debtPerson") { if (v) r.debtPerson = v; else delete r.debtPerson; }
     if (f === "inst-months" || f === "inst-first") {
       const cur = r.inst || { months: 0, first: isDate(r.date) ? addMonthsTo(r.date, 1) : "" };
       if (f === "inst-months") cur.months = +v || 0; else cur.first = v;
