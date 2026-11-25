@@ -226,7 +226,7 @@ body { font-weight: 400; } .btn, .chip-btn, .ptype { font-weight: 700; }
 #q-results { margin-top: 10px; background: var(--surface); border-radius: 20px; padding: 10px 12px; box-shadow: var(--shadow); }
 .q-sum { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; padding: 2px 2px 8px; }
 .q-sum .o { color: var(--expense); } .q-sum .i { color: var(--income); } .q-sum .btn { margin-left: auto; }
-body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-pane="accounts-list"] { display: none !important; }
+body.searching [data-pane="accounts"] > :not(.search-box):not(.tx-top), body.searching .tx-bal, body.searching .month-strip, body.searching [data-pane="accounts-list"] { display: none !important; }
 .modal { position: fixed; inset: 0; z-index: 60; background: rgba(51,45,40,.38); display: grid; place-items: center; padding: 16px; }
 .modal-box { background: var(--surface, #fff); border-radius: 22px; padding: 18px; width: min(380px, 100%); box-shadow: 0 18px 50px rgba(0,0,0,.18); display: grid; gap: 10px; }
 .modal-box h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
@@ -245,6 +245,47 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
 .bklogo.em { background: none; font-size: 15px; line-height: 20px; text-align: center; }
 .chip .bklogo { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; }
 #p-bank-logo .bklogo { margin: 0 0 0 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tx-top { display: grid; gap: 6px; margin-bottom: 10px; }
+.tx-bar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+.tx-bar-side { display: flex; justify-content: flex-end; }
+.acct-pill { position: relative; justify-self: center; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; background: var(--surface); border-radius: 99px; padding: 8px 16px 8px 8px; box-shadow: var(--shadow); font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--ink); }
+.acct-pill .bklogo { width: 34px; height: 34px; border-radius: 50%; margin: 0; vertical-align: middle; }
+.acct-pill .bklogo.em { font-size: 20px; line-height: 34px; background: var(--cream); }
+.acct-pill #p-bank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-pill .chev { flex: none; color: var(--muted); }
+.acct-pill select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: none; color: var(--ink); display: grid; place-items: center; }
+.tx-bal { display: grid; justify-items: center; gap: 0; text-align: center; }
+.tx-bal .k { color: var(--muted); font-size: 14px; }
+.tx-bal .v { font-family: var(--font-display); font-weight: 600; font-size: 30px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.tx-bal .io { display: flex; gap: 12px; font-size: 12.5px; color: var(--muted); font-weight: 600; } .tx-bal .io .i { color: var(--income); } .tx-bal .io .o { color: var(--expense); }
+.month-strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px 2px 4px; scroll-snap-type: x proximity; }
+.month-strip::-webkit-scrollbar { display: none; }
+.mtab { flex: none; scroll-snap-align: center; font: inherit; font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); background: none; border: 1.5px solid transparent; border-radius: 99px; padding: 8px 16px; }
+.mtab.on { color: var(--ink); border-color: var(--line); background: var(--surface); box-shadow: var(--shadow); }
+.stmt-details { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow); padding: 0 12px; margin-bottom: 12px; }
+.stmt-details summary { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 12px 2px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.stmt-details summary::-webkit-details-marker { display: none; }
+.stmt-details summary::after { content: "▾"; color: var(--muted); margin-left: 8px; } .stmt-details[open] summary::after { content: "▴"; }
+.stmt-details .sd-hint { margin-left: auto; font-weight: 600; font-size: 12.5px; color: var(--muted); }
+.stmt-details[open] { padding-bottom: 12px; }
+.daycard { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 14px 14px 6px; margin-bottom: 12px; }
+.dc-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 2px 2px 8px; }
+.dc-num { font-family: var(--font-display); font-weight: 500; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; min-width: 52px; }
+.dc-when { display: grid; line-height: 1.25; } .dc-when b { font-weight: 700; color: var(--muted); font-size: 14px; } .dc-when span { color: var(--muted); font-size: 13.5px; }
+.dc-net { font-family: var(--font-display); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.daycard .txc { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 1px 12px; padding: 10px 2px; border-bottom: 0; align-items: center; }
+.daycard .txc .ic { width: 46px; height: 46px; border-radius: 50%; font-size: 22px; grid-row: 1 / span 2; }
+.daycard .txc .ic .appic { width: 26px; height: 26px; border-radius: 7px; }
+.txc .t { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.txc .t.miss { color: var(--accent-deep); }
+.txc.xf .t { color: var(--muted); }
+.daycard .txc .c { grid-column: 2 / -1; font-size: 13.5px; }
+.daycard .txc .a { font-size: 16px; font-weight: 500; }
+.txc .a.exp { color: var(--expense); } .txc .a.inc { color: #3a86d1; } .txc .a.plan { color: var(--muted); }
+.txc.xf .a.inc { color: #3a86d1; }
+.daycard .tx { margin: 6px 0 10px; }
 </style>
 </head>
 <body>
@@ -286,17 +327,22 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   </div>
 
   <div class="pane" data-pane="accounts" hidden>
-  <section class="search-box" role="search">
-    <input id="q" type="search" placeholder="🔍 Search all banks: vendor, category, memo, amount…" aria-label="Search transactions" autocomplete="off" enterkeyhint="search">
+  <section class="tx-top" aria-label="Choose account and month">
+    <div class="tx-bar">
+      <span class="tx-bar-side"></span>
+      <label class="acct-pill"><span id="p-bank-logo"></span><span id="p-bank-name"></span><svg class="chev" width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l4-4 4 4M3 11l4 4 4-4"/></svg><select id="p-bank" aria-label="Which account?"></select></label>
+      <span class="tx-bar-side"><button type="button" class="icon-btn" id="q-toggle" aria-label="Search all banks"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></span>
+    </div>
+    <div class="tx-bal"><span class="k" id="tx-bal-k">Balance</span><span class="v" id="tx-bal-v">—</span><span class="io" id="tx-io"></span></div>
+    <div class="month-strip" id="month-strip" role="tablist" aria-label="Month"></div>
+    <span id="p-month-label" hidden>Month</span><select id="p-month" hidden aria-hidden="true" tabindex="-1"></select>
+    <button type="button" id="m-prev" hidden tabindex="-1"></button><button type="button" id="m-next" hidden tabindex="-1"></button>
+  </section>
+  <section class="search-box" role="search" id="search-box" hidden>
+    <input id="q" type="search" placeholder="Search all banks: vendor, category, memo, amount…" aria-label="Search transactions" autocomplete="off" enterkeyhint="search">
     <div id="q-results" hidden></div>
   </section>
-  <section class="picker" aria-label="Choose bank and month">
-    <label for="p-bank"><span>Which bank?<span id="p-bank-logo"></span></span><select id="p-bank"></select></label>
-    <label for="p-month"><span id="p-month-label">Month</span>
-      <span class="row"><button type="button" class="step" id="m-prev" aria-label="Previous month">‹</button><select id="p-month"></select><button type="button" class="step" id="m-next" aria-label="Next month">›</button></span>
-    </label>
-  </section>
-
+  <details class="stmt-details" id="stmt-details"><summary><span>Statement details</span><span class="sd-hint" id="sd-hint">balances &amp; math check</span></summary>
   <section class="bal" aria-label="Month summary">
     <div class="cell"><label class="k" for="b-begin">Started with</label><input id="b-begin" inputmode="decimal" placeholder="₱ 0.00" autocomplete="off"><span class="n" id="b-begin-n"></span></div>
     <div class="cell"><span class="k">Money in</span><span class="v inc" id="b-add">₱ 0.00</span><span class="n" id="b-add-n"></span></div>
@@ -305,6 +351,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     <div class="credit-line" id="cl-box" hidden><label>Credit limit<input id="cl-limit" inputmode="decimal" placeholder="₱ 0.00" autocomplete="off"></label><div id="cl-info"></div></div>
     <div class="recon"><span class="badge na" id="recon">Add both balances so I can check the math</span><span class="formula" id="formula"></span></div>
   </section>
+  </details>
 
   </div>
   <div class="pane" data-pane="add" hidden>
@@ -332,10 +379,8 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
 
   </div>
   <div class="pane" data-pane="accounts-list" hidden>
-  <section class="card" aria-labelledby="tx-h">
-    <div class="card-head"><h2 id="tx-h">Where the money went</h2><span class="tag" id="tx-count"></span></div>
-    <div id="tx-list"></div>
-  </section>
+  <h2 id="tx-h" class="sr-only">Transactions</h2><span id="tx-count" hidden></span>
+  <div id="tx-list"></div>
 
   </div>
   <div class="pane" data-pane="export" hidden>
@@ -856,7 +901,13 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   function renderPickers() {
     if (!lists.accounts.includes(ui.bank)) ui.bank = ordered()[0];
     $("p-bank").innerHTML = acctOptgroups(ui.bank, () => true, b => b + (period(b, ui.month) ? "  ●" : ""));
-    $("p-bank-logo").innerHTML = bankLogo(ui.bank);
+    $("p-bank-logo").innerHTML = bankLogo(ui.bank); $("p-bank-name").textContent = ui.bank;
+    { const tm = thisMonth(), ms = new Set([tm, shiftMonth(tm, -1), ui.month]); for (let i = 2; i < 13; i++) ms.add(shiftMonth(tm, -i));
+      Object.values(periods).filter(q => q.bank === ui.bank).forEach(q => ms.add(q.month)); ms.add(shiftMonth(tm, 1));
+      const lbl = (m) => m === tm ? "This month" : m === shiftMonth(tm, -1) ? "Last month" : m === shiftMonth(tm, 1) ? "Next month" : m.slice(5) + "/" + m.slice(0, 4);
+      const strip = $("month-strip");
+      strip.innerHTML = [...ms].sort().map(m => `<button type="button" role="tab" class="mtab${m === ui.month ? " on" : ""}" data-m="${m}" aria-selected="${m === ui.month}">${lbl(m)}${period(ui.bank, m) && period(ui.bank, m).rows.length ? "" : ""}</button>`).join("");
+      const on = strip.querySelector(".mtab.on"); if (on) requestAnimationFrame(() => { strip.scrollLeft = on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2; }); }
     const months = new Set(); for (let i = -1; i <= 24; i++) months.add(shiftMonth(thisMonth(), -i));
     Object.values(periods).forEach(p => months.add(p.month)); months.add(ui.month);
     const has = new Set(Object.values(periods).filter(p => p.bank === ui.bank).map(p => p.month));
@@ -865,6 +916,10 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   }
   function renderBalances() {
     const p = period(), t = totals(p), credit = isCredit(ui.bank);
+    { const b0 = beginOf(ui.bank, ui.month), endV = p && p.ending != null ? p.ending : b0 != null ? (credit ? b0 + t.exp - t.add : b0 + t.add - t.exp) : null;
+      $("tx-bal-k").textContent = credit ? "Owed" : "Balance"; $("tx-bal-v").textContent = endV != null ? peso(endV) : "—";
+      $("tx-io").innerHTML = (t.na || t.ne) ? `<span class="i">In ${peso(t.add)}</span><span class="o">Out ${peso(t.exp)}</span>` : (endV == null ? "Add a starting balance in Statement details" : "");
+      $("sd-hint").textContent = b0 != null && p && p.ending != null ? (Math.abs(p.ending - (credit ? b0 + t.exp - t.add : b0 + t.add - t.exp)) < 0.01 ? "balanced ✓" : "doesn't add up yet") : "balances & math check"; }
     const cb = carried(ui.bank, ui.month), b0 = beginOf(ui.bank, ui.month);
     const bi = $("b-begin"), ei = $("b-end");
     bi.readOnly = cb != null;
@@ -895,6 +950,8 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   function go(bank, month) { ui.bank = bank; ui.month = month; save(); renderAll(); }
   $("p-bank").addEventListener("change", e => go(e.target.value, ui.month));
   $("p-month").addEventListener("change", e => go(ui.bank, e.target.value));
+  $("month-strip").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) { openTx = null; go(ui.bank, b.dataset.m); } });
+  $("q-toggle").addEventListener("click", () => { const box = $("search-box"); box.hidden = !box.hidden; if (!box.hidden) $("q").focus(); else { $("q").value = ""; renderSearch(); } });
   $("m-prev").addEventListener("click", () => go(ui.bank, shiftMonth(ui.month, -1)));
   $("m-next").addEventListener("click", () => go(ui.bank, shiftMonth(ui.month, 1)));
 
@@ -949,7 +1006,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   function renderList() {
     const p = period(), rows = p ? p.rows : [], links = transferLinks();
     $("tx-count").textContent = rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : "";
-    if (!rows.length) { $("tx-list").innerHTML = `<p class="empty">Nothing yet for ${html(ui.bank)} in ${monthLabel(ui.month)}.</p>`; return; }
+    if (!rows.length) { $("tx-list").innerHTML = `<div class="daycard"><p class="empty">Nothing yet for ${html(ui.bank)} in ${monthLabel(ui.month)}. Tap ＋ to add one.</p></div>`; return; }
     const seen = [], dupIds = new Set();
     rows.forEach(r => { if (seen.some(x => sameTxn(x, r))) dupIds.add(r.id); seen.push(r); });
     // Newest day first; each day shows its money out / money in.
@@ -958,24 +1015,31 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
     $("tx-list").innerHTML = order.map(d => {
       const list = days[d]; let out = 0, inn = 0;
       list.filter(r => isValid(r) && !isInst(r)).forEach(r => { const n = parseFloat(cleanAmount(r.amount)); if (r.type === "income") inn += n; else out += n; });
-      const label = d === "no-date" ? "No date" : new Date(d + "T00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      return `<div class="day"><div class="day-head"><span>${label}</span><span>${out ? `<span class="o">−${peso(out)}</span>` : ""}${inn ? `<span class="i">+${peso(inn)}</span>` : ""}</span></div>`
+      const dt = d === "no-date" ? null : new Date(d + "T00:00"), net = Math.round((inn - out) * 100) / 100;
+      return `<div class="daycard"><div class="dc-head"><span class="dc-num">${dt ? String(dt.getDate()).padStart(2, "0") : "?"}</span><span class="dc-when">${dt ? `<b>${dt.toLocaleDateString("en-US", { weekday: "long" })}</b><span>${dt.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>` : "<b>No date</b><span>Fix these</span>"}</span><span class="dc-net${net < 0 ? " neg" : net > 0 ? " pos" : ""}">${peso(net)}</span></div>`
         + list.map(r => r.id === openTx ? txEditor(r, links, dupIds.has(r.id)) : txCompact(r, links, dupIds.has(r.id))).join("") + `</div>`;
     }).join("");
   }
   let openTx = null, instOpen = null;
+  // Soft colour per category so each icon sits in its own bubble.
+  const BUBBLES = ["#ffe0c7", "#fff0bd", "#d9f0e2", "#d8e9ff", "#f3dcf7", "#ffd6d6", "#e4e0ff", "#d3f1f1", "#f0e6d6", "#e2f3c8"];
+  const bubble = (g) => { let h = 0; for (const c of String(g || "")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return BUBBLES[h % BUBBLES.length]; };
   function txCompact(r, links, dup) {
-    const xferTo = links.src.get(r.id);
-    const cat = isInst(r) ? `🗓 ${r.inst.months} months · ${[rowGroup(r), r.category].filter(Boolean).join(" › ") || "pick a category"}` : r.instOf ? `🗓 installment · ${[rowGroup(r), r.category].filter(Boolean).join(" › ")}` : r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ split ${r.parts.length} ways`
-      : r.type === "income" ? (r.category || "") : [rowGroup(r), r.category].filter(Boolean).join(" › ");
-    const missing = needsCat(r);
-    const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—";
-    const ic = r.sentTo || r.paidFrom ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : missing ? "❔" : catIconHtml(rowGroup(r), r.category);
-    return `<button type="button" class="txc${isValid(r) ? "" : " bad"}" data-open="${r.id}">
-      <span class="ic" aria-hidden="true">${ic}</span>
-      <span class="d">${html(r.description || "No description")}${findRule(r) ? ' <span class="st">★</span>' : ""}</span>
-      <span class="a ${r.type === "income" ? "inc" : ""}">${r.type === "income" ? "+" : "−"}${amt}</span>
-      <span class="c${missing ? " miss" : ""}">${missing ? "Pick a category" : html(cat)}${dup ? ' <span class="dupx">· ⚠ duplicate?</span>' : ""}</span>
+    const g = r.type === "income" ? "" : rowGroup(r), missing = needsCat(r), xfer = r.sentTo || r.paidFrom;
+    const title = r.sentTo ? `Transfer to ${r.sentTo}` : r.paidFrom ? `Transfer from ${r.paidFrom}`
+      : isSplit(r) ? `Split • ${[...new Set(r.parts.map(x => r.type === "income" ? x.category : rowGroup(x)).filter(Boolean))].join(", ") || r.parts.length + " parts"}`
+      : missing ? "Pick a category" : r.type === "income" ? (r.category || "Money in")
+      : [g, r.category && g && r.category.startsWith(g + " ") ? r.category.slice(g.length + 1) : r.category].filter(Boolean).join(" • ");
+    const sub = [isInst(r) ? `🗓 ${r.inst.months} months` : r.instOf ? "🗓 installment" : "", r.description || "No description"].filter(Boolean).join(" · ");
+    const n = parseFloat(cleanAmount(r.amount));
+    const amt = isNaN(n) ? "—" : r.type === "income" ? peso(n) : peso(-n);
+    const ic = xfer ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : missing ? "❔" : catIconHtml(g, r.category);
+    const bg = xfer ? "#e7e3dc" : missing ? "#fff1e6" : bubble(r.type === "income" ? "income:" + r.category : g);
+    return `<button type="button" class="txc${isValid(r) ? "" : " bad"}${xfer ? " xf" : ""}" data-open="${r.id}">
+      <span class="ic" aria-hidden="true" style="background:${bg}">${ic}</span>
+      <span class="t${missing && !xfer ? " miss" : ""}">${html(title)}</span>
+      <span class="a ${r.type === "income" ? "inc" : "exp"}${isInst(r) ? " plan" : ""}">${amt}</span>
+      <span class="c">${html(sub)}${findRule(r) ? ' <span class="st">★</span>' : ""}${dup ? ' <span class="dupx">· ⚠ duplicate?</span>' : ""}</span>
     </button>`;
   }
   function txEditor(r, links, dup) {
@@ -1464,7 +1528,7 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
       + (hits.length ? hits.slice(0, 200).map(({ r, p, n, parts }) => {
         if (parts) { const cat = parts.map(x => [x.note && x.note !== r.description ? x.note : "", x.category || rowGroup(x)].filter(Boolean).join(" · ")).join(", ");
           return `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}" data-id="${r.id}"><span class="ic" aria-hidden="true">✂️</span><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)} · part: ${html(cat)}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${peso(n)}</span></button>`; }
-        const cat = r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ ${r.parts.map(x => x.category || rowGroup(x)).filter(Boolean).join(", ") || "split"}` : r.type === "income" ? r.category : [rowGroup(r), r.category].filter(Boolean).join(" › ");
+        const cat = r.sentTo ? `↔ to ${r.sentTo}` : r.paidFrom ? `↔ from ${r.paidFrom}` : isSplit(r) ? `✂ ${r.parts.map(x => x.category || rowGroup(x)).filter(Boolean).join(", ") || "split"}` : r.type === "income" ? r.category : [rowGroup(r), r.category].filter(Boolean).join(" • ");
         const ic = r.sentTo || r.paidFrom ? "↔️" : isSplit(r) ? "✂️" : r.type === "income" ? catIcon("", r.category) : needsCat(r) ? "❔" : catIconHtml(rowGroup(r), r.category);
         return `<button type="button" class="rec" data-bank="${html(p.bank)}" data-month="${p.month}" data-id="${r.id}"><span class="ic" aria-hidden="true">${ic}</span><span class="d">${html(r.description || "No description")}</span><span class="m">${short(r.date)} · ${html(p.bank)}${cat ? " · " + html(cat) : ""}</span><span class="a ${r.type === "income" ? "inc" : "exp"}">${r.type === "income" ? "+" : "−"}${cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : "—"}</span></button>`; }).join("")
         + (hits.length > 200 ? `<p class="hint">Showing the newest 200. Type more to narrow it down.</p>` : "")
@@ -1472,9 +1536,9 @@ body.searching [data-pane="accounts"] > :not(.search-box), body.searching [data-
   }
   $("q").addEventListener("input", renderSearch);
   $("q-results").addEventListener("click", e => {
-    if (e.target.closest("#q-clear")) { $("q").value = ""; renderSearch(); return; }
+    if (e.target.closest("#q-clear")) { $("q").value = ""; renderSearch(); $("search-box").hidden = true; return; }
     const b = e.target.closest(".rec"); if (!b) return;
-    $("q").value = ""; renderSearch(); openTx = b.dataset.id; ui.bank = b.dataset.bank; ui.month = b.dataset.month; renderAll(); showTab("accounts");
+    $("q").value = ""; renderSearch(); $("search-box").hidden = true; openTx = b.dataset.id; ui.bank = b.dataset.bank; ui.month = b.dataset.month; renderAll(); showTab("accounts");
     setTimeout(() => { const ed = document.querySelector(`.tx[data-id="${CSS.escape(openTx)}"]`); if (ed) ed.scrollIntoView({ block: "center" }); }, 60);
   });
 
