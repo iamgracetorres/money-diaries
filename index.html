@@ -2078,7 +2078,14 @@ body.sheet-open { overflow: hidden; }
 
   function renderAll() { renderBudget(); renderHome(); renderDebt(); renderPickers(); renderBalances(); renderAddForm(true); renderList(); renderCSV(); renderSettings(); renderBackup(); }
 
-  load(); try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
+  load();
+  // Opening the app starts on this month; months picked while working stay until the app is closed or left alone for 30 minutes.
+  function backToThisMonth() { ui.month = thisMonth(); homeFrom = homeTo = null; budMonth = budYear = null; openTx = null; }
+  backToThisMonth();
+  { let hiddenAt = 0; document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > 30 * 60000) { backToThisMonth(); renderAll(); } }); }
+  try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
   renderNet(); renderAll(); showTab(ui.tab || "home");
   gdState(gd.on ? (tokenOk() ? "On" : "Signing in…") : "Off"); autoSync();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
