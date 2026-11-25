@@ -1,5 +1,5 @@
 // Keeps the app working with no internet: the app files are saved on the phone the first time it opens.
-const CACHE = "money-diaries-v29";
+const CACHE = "money-diaries-v30";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./fonts/fredoka-latin-500-normal.woff2", "./fonts/fredoka-latin-600-normal.woff2",
   "./fonts/nunito-latin-400-normal.woff2", "./fonts/nunito-latin-600-normal.woff2", "./fonts/nunito-latin-700-normal.woff2"];
@@ -15,6 +15,6 @@ self.addEventListener("fetch", e => {
     return;
   }
   if (e.request.method !== "GET" || new URL(e.request.url).origin !== self.location.origin) return;
-  e.respondWith(fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
+  e.respondWith(fetch(e.request, { cache: "no-cache" }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
     .catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match("./index.html"))));
 });
