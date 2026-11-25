@@ -679,10 +679,12 @@ select.sheet-hidden { display: none !important; }
 
   // ===== Shared core (same in the online page and the phone app) =====
   // Account types: every account sits in one group. Credit cards show what you owe; everything else shows what you have.
-  const ACCT_TYPES = [["cash", "💵 Cash"], ["debit", "🏦 Debit"], ["ewallet", "📱 E-wallets"], ["credit", "💳 Credit"], ["goal", "🎯 Goals"]];
-  const TYPE_ICON = { credit: "💳", debit: "🏦", ewallet: "📱", cash: "💵", goal: "🎯" };
+  const ACCT_TYPES = [["cash", "💵 Cash"], ["debit", "🏦 Debit"], ["ewallet", "📱 E-wallets"], ["credit", "💳 Credit"], ["goal", "🎯 Goals"], ["loan", "🏛️ Long-term Loans"]];
+  const TYPE_ICON = { credit: "💳", debit: "🏦", ewallet: "📱", cash: "💵", goal: "🎯", loan: "🏛️" };
   const acctType = (b) => (lists.accountTypes && lists.accountTypes[b]) || ((lists.creditAccounts || []).includes(b) ? "credit" : "debit");
-  const isCredit = (b) => acctType(b) === "credit";
+  // Credit cards and long-term loans both show what you owe (charges add, payments take away).
+  const isCredit = (b) => acctType(b) === "credit" || acctType(b) === "loan";
+  const isCard = (b) => acctType(b) === "credit";
   const orderedAccounts = () => ACCT_TYPES.flatMap(([t]) => lists.accounts.filter(a => acctType(a) === t));
   function acctOptgroups(selected, filter = () => true, label = (b) => b) {
     const opt = (b) => `<option value="${html(b)}"${b === selected ? " selected" : ""}>${html(label(b))}</option>`;
@@ -818,6 +820,9 @@ select.sheet-hidden { display: none !important; }
     if (!lists.added9557) { if (!lists.accounts.includes("BPI 9557")) lists.accounts.push("BPI 9557"); lists.accountTypes["BPI 9557"] = "credit";
       lists.creditAccounts = lists.accounts.filter(isCredit); lists.added9557 = 1; changed = true; }
     if (!lists.addedLongTermLoan) { const t = 1795600000000; catLog().push({ id: "ltl-g", t, kind: "g", group: "Long-term Loan", from: "Long-term Loan", add: 1 }, { id: "ltl-s", t: t + 1, kind: "s", group: "Long-term Loan", from: "Home Mortgage", add: 1 }); lists.addedLongTermLoan = 1; changed = true; }
+    if (!lists.movedLongTermLoan) { const t = 1795600000010;
+      catLog().push({ id: "ltl-del", t, kind: "g", group: "Long-term Loan", from: "Long-term Loan", del: 1 });
+      acctLog().push({ id: "ltl-acct", t, from: "Home Mortgage", add: 1, type: "loan" }); lists.movedLongTermLoan = 1; changed = true; }
     if (applyCatChangesToLists()) changed = true;
     if (applyAcctChangesToLists()) changed = true;
     // Adjustment: for fixing a beginning balance. Money in or money out, so it's in both lists.
@@ -1194,8 +1199,8 @@ select.sheet-hidden { display: none !important; }
     $("b-end-n").textContent = credit ? "What you owe now" : "From the statement";
     $("b-add").textContent = peso(t.add); $("b-exp").textContent = peso(t.exp);
     $("b-add-n").textContent = `${t.na} transaction${t.na === 1 ? "" : "s"}`; $("b-exp-n").textContent = `${t.ne} transaction${t.ne === 1 ? "" : "s"}`;
-    { const box = $("cl-box"); box.hidden = !credit;
-      if (credit) { const lim = (lists.creditLimits || {})[ui.bank], ub = unbilledByCard()[ui.bank] || 0, owed = creditUsed(ui.bank);
+    { const box = $("cl-box"), card = isCard(ui.bank); box.hidden = !card;
+      if (card) { const lim = (lists.creditLimits || {})[ui.bank], ub = unbilledByCard()[ui.bank] || 0, owed = creditUsed(ui.bank);
         if (document.activeElement !== $("cl-limit")) $("cl-limit").value = lim != null ? peso(lim) : "";
         $("cl-info").innerHTML = `${ub ? `<span class="n">🗓 ${peso(ub)} of installments still to be billed</span>` : ""}${lim != null ? `<span>Available <b class="${lim - owed < 0 ? "neg" : ""}">${peso(lim - owed)}</b></span><span class="n">${peso(lim)} limit − charges + payments = ${peso(owed)} used. Installments count in full when bought.</span>` : `<span class="n">Add the limit to see how much you can still use.</span>`}`; } }
     const badge = $("recon"), f = $("formula");
@@ -1220,7 +1225,7 @@ select.sheet-hidden { display: none !important; }
     sheetPick = onPick; $("bank-sheet-h").textContent = "Choose an account";
     $("bank-sheet-list").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); if (!xs.length) return "";
       return `<div class="sheet-grp">${label}</div>` + xs.map(b => { const x = typeof balanceOf === "function" ? balanceOf(b) : null;
-        return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
+        return `<button type="button" class="sheet-item${b === cur ? " on" : ""}" data-pick="${html(b)}">${bankLogo(b)}<span class="nm">${html(b)}</span><span class="bv">${x && x.v != null ? peso(x.v) + (t === "credit" || t === "loan" ? " owed" : "") : ""}</span>${b === cur ? '<span class="ck" aria-hidden="true">✓</span>' : ""}</button>`; }).join(""); }).join("");
     $("bank-sheet").hidden = false; document.body.classList.add("sheet-open");
     const on = $("bank-sheet-list").querySelector(".on"); if (on) on.scrollIntoView({ block: "center" }); else $("bank-sheet-list").scrollTop = 0;
     setTimeout(() => { const f = $("bank-sheet-list").querySelector(".on") || $("bank-sheet-list").querySelector(".sheet-item"); if (f) f.focus({ preventScroll: true }); }, 30);
@@ -1382,7 +1387,7 @@ select.sheet-hidden { display: none !important; }
       else if (r.type === "income") cats = `<div class="row"><select data-f="income-cat" data-sheet="income" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`;
       else { const g = rowGroup(r); const grp = groupByName(g);
         cats = `<div class="row"><select data-f="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-f="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, r.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, r.category)}</select></div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div>`; }
-      const canInst = isCredit(ui.bank) && r.type === "expense" && !xf && !r.instOf;
+      const canInst = isCard(ui.bank) && r.type === "expense" && !xf && !r.instOf;
       let instBox = "";
       if (canInst && (isInst(r) || instOpen === r.id)) {
         const st = isInst(r) && isDate(r.inst.first) ? instStatus(r) : null;
@@ -2164,7 +2169,7 @@ select.sheet-hidden { display: none !important; }
     const hiddenN = lists.accounts.filter(b => !used(b)).length;
     const groupsHtml = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t && (showAllAccts || used(a))); if (!xs.length) return "";
       const body = xs.map(row).join(""); const tot = sums[t] || 0;
-      return `<div class="acct-head"><span>${label}</span><span>${peso(tot)}${t === "credit" ? " owed" : t === "goal" ? " saved" : ""}</span></div>${body}`; }).join("");
+      return `<div class="acct-head"><span>${label}</span><span>${peso(tot)}${t === "credit" || t === "loan" ? " owed" : t === "goal" ? " saved" : ""}</span></div>${body}`; }).join("");
     $("h-accounts").innerHTML = groupsHtml + (hiddenN ? `<button type="button" class="btn ghost small" data-home="more" style="margin-top:6px">${showAllAccts ? "Hide accounts with no data" : `Show ${hiddenN} more account${hiddenN === 1 ? "" : "s"} with no data yet`}</button>` : "")
       + (!lists.accounts.some(used) ? `<p class="empty" style="padding:6px">Add a transaction or load a backup to see your balances here.</p>` : "");
     // Needs a look
