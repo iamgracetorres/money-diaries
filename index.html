@@ -932,7 +932,8 @@ select.sheet-hidden { display: none !important; }
     [...where.values()].forEach(({ r, p }) => {
       if (!where.has(r.id) || !r.pair) return;
       const o = where.get(r.pair);
-      if (!o) { if (r.auto) drop(r, p); else { delete r.pair; touch(r, p); } return; }           // other side was removed
+      // Other side was removed: a side the app made goes too; a real one stays but is no longer a transfer (and isn't re-matched).
+      if (!o) { if (r.auto) drop(r, p); else { delete r.pair; delete r.paidFrom; delete r.sentTo; r.notXfer = 1; touch(r, p); } return; }
       if (o.r.pair !== r.id) { if (r.auto) drop(r, p); else { delete r.pair; touch(r, p); } return; } // other side is linked elsewhere
       if (!isXfer(r) || xferAcct(r) !== o.p.bank || o.r.type === r.type) {                        // no longer a transfer, or account changed
         if (r.auto) { drop(r, p); delete o.r.pair; touch(o.r, o.p); }
