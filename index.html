@@ -932,8 +932,8 @@ select.sheet-hidden { display: none !important; }
     [...where.values()].forEach(({ r, p }) => {
       if (!where.has(r.id) || !r.pair) return;
       const o = where.get(r.pair);
-      // Other side was removed: a side the app made goes too; a real one stays but is no longer a transfer (and isn't re-matched).
-      if (!o) { if (r.auto) drop(r, p); else { delete r.pair; delete r.paidFrom; delete r.sentTo; r.notXfer = 1; touch(r, p); } return; }
+      // Other side was deleted: delete this side too, so a transfer always goes away from both accounts.
+      if (!o) { drop(r, p); return; }
       if (o.r.pair !== r.id) { if (r.auto) drop(r, p); else { delete r.pair; touch(r, p); } return; } // other side is linked elsewhere
       if (!isXfer(r) || xferAcct(r) !== o.p.bank || o.r.type === r.type) {                        // no longer a transfer, or account changed
         if (r.auto) { drop(r, p); delete o.r.pair; touch(o.r, o.p); }
@@ -1397,7 +1397,7 @@ select.sheet-hidden { display: none !important; }
     if (b.dataset.act === "done") { openTx = null; renderList(); return; }
     const card = b.closest(".tx"), p = period(), r = p.rows.find(x => x.id === card.dataset.id); if (!r) return;
     if (b.dataset.act === "del") {
-      if (delArmed !== r.id) { delArmed = r.id; b.textContent = "Tap again to remove"; setTimeout(() => { if (delArmed === r.id) { delArmed = null; renderList(); } }, 3000); return; }
+      if (delArmed !== r.id) { delArmed = r.id; b.textContent = r.pair ? "Tap again · removes it from both accounts" : "Tap again to remove"; setTimeout(() => { if (delArmed === r.id) { delArmed = null; renderList(); } }, 3000); return; }
       delArmed = null; openTx = null; p.rows = p.rows.filter(x => x !== r); (p.deleted = p.deleted || []).push(r.id); flash("Removed.");
     }
     if (["split", "add-part", "fill-left", "unsplit", "del-part"].includes(b.dataset.act)) {
