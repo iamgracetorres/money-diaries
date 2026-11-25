@@ -350,6 +350,24 @@ body.sheet-open { overflow: hidden; }
 .bud-row .bv { font-family: var(--font-display); font-weight: 600; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; } .bud-row .bv small { color: var(--muted); font-weight: 500; font-size: 13px; }
 .bud-row .bb { grid-column: 2; } .bud-row .bv { font-size: 17px; }
 .bud-row .bn { font-size: 12.5px; color: var(--muted); min-width: 0; } .bud-row .bl { font-size: 12.5px; font-weight: 700; color: var(--income); white-space: nowrap; text-align: right; } .bud-row .bl.over { color: var(--expense); }
+.mgr-h { font-size: 15px; font-weight: 700; margin: 0; font-family: var(--font-display); }
+.mgr-grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 2px 4px; }
+#cat-list .cat-card, #bank-list .cat-card { border-radius: 16px; padding: 2px 10px; margin-bottom: 8px; box-shadow: none; border: 1px solid var(--line); }
+#cat-list .cat-row, #bank-list .cat-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; padding: 7px 0; min-height: 44px; }
+#cat-list .cat-row .cb, #bank-list .cat-row .cb { width: 30px; height: 30px; font-size: 16px; }
+#cat-list .cat-row .cb .appic { width: 18px; height: 18px; border-radius: 5px; }
+#cat-list .cat-row .nm, #bank-list .cat-row .nm { font-size: 14.5px; font-weight: 600; }
+#cat-list .cat-row .chev, #bank-list .cat-row .chev { font-size: 17px; }
+#cat-list .cat-subs { margin-left: 14px; }
+#cat-list .cat-row.sub { grid-template-columns: 26px minmax(0, 1fr) auto; padding-left: 12px; min-height: 40px; }
+#cat-list .cat-row.sub .cb { width: 26px; height: 26px; font-size: 14px; }
+#cat-list .cat-row.sub .nm { font-size: 13.5px; font-weight: 400; }
+#cat-list .cat-row.sub::before { width: 8px; }
+#cat-list .cat-add { font-size: 12.5px; padding: 9px 0 9px 12px; }
+#cat-list .cat-tabs, .cat-tabs { margin-bottom: 8px; } .cat-tabs button { font-size: 13.5px; padding: 7px; }
+.cat-plus { width: 34px; height: 34px; font-size: 20px; }
+#bank-list .cat-row .nm small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+#bank-list .cb.bk { background: none; } #bank-list .cb.bk .bklogo { width: 30px; height: 30px; border-radius: 50%; margin: 0; } #bank-list .cb.bk .bklogo.em { line-height: 30px; font-size: 17px; background: var(--cream); }
 </style>
 </head>
 <body>
@@ -519,10 +537,10 @@ body.sheet-open { overflow: hidden; }
   <section class="card">
     <details open>
       <summary>My banks &amp; categories</summary>
-      <h3 style="font-size:14px;font-weight:500;margin:0 0 6px">Banks</h3>
-      <div id="c-accounts"></div>
-      <form class="row" id="f-acct" style="margin:8px 0 16px;flex-wrap:wrap"><input placeholder="Add an account"><select id="f-acct-type" aria-label="Group" style="flex:0 0 auto;width:auto"><option value="cash">💵 Cash</option><option value="debit" selected>🏦 Debit</option><option value="ewallet">📱 E-wallet</option><option value="credit">💳 Credit</option><option value="goal">🎯 Goal</option></select><button class="btn small">Add</button></form>
-      <div class="cat-headrow"><h3 style="font-size:14px;font-weight:500;margin:0">Categories</h3><button type="button" class="cat-plus" id="cat-plus" aria-label="Add a category">＋</button></div>
+      <div class="cat-headrow"><h3 class="mgr-h">Banks</h3><button type="button" class="cat-plus" id="bank-plus" aria-label="Add a bank">＋</button></div>
+      <div id="bank-list"></div>
+      <p class="hint" style="margin:6px 0 18px">Tap to edit · press and hold to delete</p>
+      <div class="cat-headrow"><h3 class="mgr-h">Categories</h3><button type="button" class="cat-plus" id="cat-plus" aria-label="Add a category">＋</button></div>
       <div class="cat-tabs" role="tablist" id="cat-tabs"><button type="button" role="tab" data-ct="expense" class="on" aria-selected="true">Expense</button><button type="button" role="tab" data-ct="income" aria-selected="false">Income</button></div>
       <div id="cat-list"></div>
       <p class="hint" style="margin:6px 0 16px">Tap to rename · press and hold to delete</p>
@@ -708,6 +726,45 @@ body.sheet-open { overflow: hidden; }
     return n;
   }
   // ===== end category edits =====
+  // ===== account edits (same on both pages) =====
+  // Renames, deletes and "delete and move to" for banks are logged in lists.acctChanges so they reach the other
+  // device through sync. Each entry: { id, t, from, to (rename or move into another account) | del: 1 | add: 1, type }.
+  const acctLog = () => (lists.acctChanges = Array.isArray(lists.acctChanges) ? lists.acctChanges : []);
+  function applyAcctChangesToLists() {
+    let ch = false; lists.accountTypes = lists.accountTypes || {}; lists.creditLimits = lists.creditLimits || {};
+    [...acctLog()].sort((a, b) => a.t - b.t).forEach(c => {
+      const i = lists.accounts.indexOf(c.from);
+      if (c.to && i >= 0) {
+        if (lists.accounts.includes(c.to)) lists.accounts.splice(i, 1); else lists.accounts[i] = c.to;
+        if (!lists.accountTypes[c.to] && lists.accountTypes[c.from]) lists.accountTypes[c.to] = lists.accountTypes[c.from];
+        if (lists.creditLimits[c.to] == null && lists.creditLimits[c.from] != null) lists.creditLimits[c.to] = lists.creditLimits[c.from];
+        delete lists.accountTypes[c.from]; delete lists.creditLimits[c.from]; ch = true;
+      }
+      if (c.del && i >= 0) { lists.accounts.splice(i, 1); delete lists.accountTypes[c.from]; delete lists.creditLimits[c.from]; ch = true; }
+      if (c.add && !lists.accounts.includes(c.from)) { lists.accounts.push(c.from); if (c.type) lists.accountTypes[c.from] = c.type; ch = true; }
+      if (c.to) lists.rules.forEach(x => { if (x.paidFrom === c.from) { x.paidFrom = c.to; ch = true; } if (x.sentTo === c.from) { x.sentTo = c.to; ch = true; } });
+      if (c.to && ui && ui.bank === c.from) ui.bank = c.to;
+    });
+    lists.creditAccounts = lists.accounts.filter(a => lists.accountTypes[a] === "credit");
+    return ch;
+  }
+  // Moves every month of a renamed (or merged) account under its new name, and fixes transfers that point at it.
+  function applyAcctChangesToPeriods(touch) {
+    const log = [...acctLog()].filter(c => c.to).sort((a, b) => a.t - b.t); if (!log.length) return;
+    log.forEach(c => {
+      Object.keys(periods).forEach(k => { const p = periods[k]; if (!p || p.bank !== c.from) return;
+        const q = period(c.to, p.month, true), had = new Map(q.rows.map(r => [r.id, r]));
+        const gone = new Set([...(q.deleted || []), ...(p.deleted || [])]); if (gone.size) q.deleted = [...gone];
+        p.rows.forEach(r => { if (gone.has(r.id)) return; const o = had.get(r.id); if (!o) q.rows.push(r); else if ((r.u || 0) > (o.u || 0)) q.rows[q.rows.indexOf(o)] = r; });
+        ["beginning", "ending", "stmtBeginning"].forEach(f => { if (q[f] == null && p[f] != null) q[f] = p[f]; });
+        q.rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+        delete periods[k]; touch(k); touch(keyOf(c.to, p.month)); });
+      Object.keys(periods).forEach(k => { let t = false; periods[k].rows.forEach(r => { let h = false;
+        if (r.paidFrom === c.from) { r.paidFrom = c.to; h = true; } if (r.sentTo === c.from) { r.sentTo = c.to; h = true; } if (h) { r.u = Math.max(r.u || 0, c.t); t = true; } }); if (t) touch(k); });
+    });
+  }
+  const acctUseCount = (b) => Object.values(periods).filter(p => p.bank === b).reduce((a, p) => a + p.rows.length, 0);
+  // ===== end account edits =====
   // One-time and every-load fixes to the saved setup. Returns true when something changed.
   function normalizeLists() {
     let changed = false;
@@ -734,6 +791,7 @@ body.sheet-open { overflow: hidden; }
     if (!lists.added9557) { if (!lists.accounts.includes("BPI 9557")) lists.accounts.push("BPI 9557"); lists.accountTypes["BPI 9557"] = "credit";
       lists.creditAccounts = lists.accounts.filter(isCredit); lists.added9557 = 1; changed = true; }
     if (applyCatChangesToLists()) changed = true;
+    if (applyAcctChangesToLists()) changed = true;
     // Adjustment: for fixing a beginning balance. Money in or money out, so it's in both lists.
     if ((lists.adjVersion || 0) < 1) { if (!lists.expenseGroups.some(g => g.name === "Adjustment")) lists.expenseGroups.push({ name: "Adjustment", subs: [] });
       if (!lists.income.includes("Adjustment")) lists.income.push("Adjustment"); lists.adjVersion = 1; changed = true; }
@@ -741,6 +799,7 @@ body.sheet-open { overflow: hidden; }
   }
   // Fix renamed categories on saved transactions. Calls touch(key) for each month that changed.
   function normalizeRows(touch) {
+    applyAcctChangesToPeriods(touch);
     applyCatChangesToRows(touch);
     Object.keys(periods).forEach(k => { let t = false;
       periods[k].rows.forEach(r => { if (GROUP_NAME_FIXES[r.group]) { r.group = GROUP_NAME_FIXES[r.group]; t = true; } (r.parts || []).forEach(x => { if (GROUP_NAME_FIXES[x.group]) { x.group = GROUP_NAME_FIXES[x.group]; t = true; } }); });
@@ -750,6 +809,7 @@ body.sheet-open { overflow: hidden; }
   function mergeExtraLists(L) {
     if (!L) return;
     Object.entries(L.accountTypes || {}).forEach(([a, t]) => { if (!lists.accountTypes[a]) lists.accountTypes[a] = t; });
+    (L.acctChanges || []).forEach(c => { if (!acctLog().some(x => x.id === c.id)) acctLog().push(JSON.parse(JSON.stringify(c))); });
     (L.catChanges || []).forEach(c => { if (!catLog().some(x => x.id === c.id)) catLog().push(JSON.parse(JSON.stringify(c))); });
     lists.creditLimits = lists.creditLimits || {}; Object.entries(L.creditLimits || {}).forEach(([a, v]) => { if (lists.creditLimits[a] == null) lists.creditLimits[a] = v; });
     const gone = new Set([...(lists.debtsDeleted || []), ...(L.debtsDeleted || [])]); lists.debtsDeleted = [...gone];
@@ -1422,7 +1482,7 @@ body.sheet-open { overflow: hidden; }
 
   // ---------- settings ----------
   function renderSettings() {
-    $("c-accounts").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); return xs.length ? `<div class="acct-head" style="margin:8px 0 4px"><span>${label}</span></div><div class="chips">` + xs.map(a => `<span class="chip">${bankLogo(a)}${html(a)}<button type="button" data-type="${html(a)}" aria-label="Change group for ${html(a)}" title="Tap to move to the next group">${TYPE_ICON[t]}</button><button type="button" data-rm-acct="${html(a)}" aria-label="Remove ${html(a)}">×</button></span>`).join("") + `</div>` : ""; }).join("");
+    renderBanks();
     renderCats();
     $("c-rules").innerHTML = lists.rules.length ? lists.rules.map((x, i) => `<span class="chip">★ ${html(x.label)} → ${html(ruleCat(x))}<button type="button" data-rm-rule="${i}">×</button></span>`).join("") : `<span class="hint" style="margin:0">Nothing starred yet.</span>`;
     $("c-renames").innerHTML = lists.renames.length ? lists.renames.map((x, i) => `<span class="chip">"${html(x.from)}" → ${html(x.to)}<button type="button" data-rm-ren="${i}">×</button></span>`).join("") : `<span class="hint" style="margin:0">No renames yet.</span>`;
@@ -1519,6 +1579,66 @@ body.sheet-open { overflow: hidden; }
       const b = e.target.closest(".cat-row"); if (!b) return; if (held) { held = false; return; } editCat(b.dataset.k, b.dataset.g, b.dataset.n); });
   }
   $("cat-plus").addEventListener("click", () => addCat(catTab === "income" ? "i" : "g", ""));
+
+  // ---------- banks: same as categories (tap to edit, hold to delete, ＋ to add) ----------
+  function renderBanks() {
+    $("bank-list").innerHTML = ACCT_TYPES.map(([t, label]) => { const xs = lists.accounts.filter(a => acctType(a) === t); if (!xs.length) return "";
+      return `<div class="mgr-grp">${label}</div><div class="cat-card">` + xs.map(b => { const n = acctUseCount(b), lim = (lists.creditLimits || {})[b];
+        return `<button type="button" class="cat-row" data-bank-row="${html(b)}"><span class="cb bk">${bankLogo(b)}</span><span class="nm">${html(b)}<small>${n ? `${n} transaction${n === 1 ? "" : "s"}` : "No transactions yet"}${lim != null ? ` · limit ${peso(lim)}` : ""}</small></span><span class="chev" aria-hidden="true">›</span></button>`; }).join("") + `</div>`; }).join("");
+  }
+  function logAcct(c) { acctLog().push({ id: uid(), t: Date.now(), ...c }); normalizeLists(); normalizeRows(() => {}); save(); renderAll(); }
+  const typeOpts = (sel) => ACCT_TYPES.map(([t, l]) => `<option value="${t}"${t === sel ? " selected" : ""}>${l}</option>`).join("");
+  function editBank(b) {
+    const t0 = acctType(b), lim = (lists.creditLimits || {})[b];
+    const f = catModal(`<h3>Edit ${html(b)}</h3>
+      <label class="k">Name<input name="nm" value="${html(b)}" required></label>
+      <label class="k">Group<select name="tp">${typeOpts(t0)}</select></label>
+      <label class="k" id="lim-wrap"${t0 === "credit" ? "" : " hidden"}>Credit limit<input name="lim" inputmode="decimal" placeholder="₱ 0.00" value="${lim != null ? html(peso(lim)) : ""}"></label>
+      <p class="hint" style="margin:0">Renaming moves all its months and transfers to the new name. Keep it matching Tarsi.</p>
+      <div class="modal-acts"><button type="button" class="btn ghost" data-x>Cancel</button><button class="btn primary">Save</button></div>`);
+    f.tp.addEventListener("change", () => { f.querySelector("#lim-wrap").hidden = f.tp.value !== "credit"; });
+    f.addEventListener("submit", e => { e.preventDefault(); const v = f.nm.value.trim(), tp = f.tp.value, l = num(f.lim.value); closeCatModal(); if (!v) return;
+      if (v !== b && lists.accounts.includes(v)) { flash(`${v} already exists. Hold ${b} to delete it and move its transactions there.`); return; }
+      lists.creditLimits = lists.creditLimits || {};
+      if (tp === "credit") { if (l == null) delete lists.creditLimits[b]; else lists.creditLimits[b] = l; }
+      if (tp !== t0) setAcctType(b, tp);
+      if (v !== b) { logAcct({ from: b, to: v }); flash(`Renamed to ${v} ♡`); } else { save(); renderAll(); flash("Saved ♡"); } });
+  }
+  function addBank() {
+    const f = catModal(`<h3>New account</h3>
+      <label class="k">Name<input name="nm" placeholder="e.g. Maya, BPI 1234" required></label>
+      <label class="k">Group<select name="tp">${typeOpts("debit")}</select></label>
+      <div class="modal-acts"><button type="button" class="btn ghost" data-x>Cancel</button><button class="btn primary">Add</button></div>`);
+    f.addEventListener("submit", e => { e.preventDefault(); const v = f.nm.value.trim(); closeCatModal(); if (!v) return;
+      if (lists.accounts.includes(v)) { flash(`${v} is already there.`); return; }
+      logAcct({ from: v, add: 1, type: f.tp.value }); flash(`Added ${v} ♡`); });
+  }
+  function deleteBank(b) {
+    if (lists.accounts.length <= 1) { flash("Keep at least one account."); return; }
+    const n = acctUseCount(b);
+    const opts = ACCT_TYPES.map(([t, l]) => { const xs = lists.accounts.filter(a => a !== b && acctType(a) === t); return xs.length ? `<optgroup label="${l}">${xs.map(a => `<option value="${html(a)}">${html(a)}</option>`).join("")}</optgroup>` : ""; }).join("");
+    const f = catModal(`<h3>Delete ${html(b)}?</h3>
+      ${n ? `<p class="del-warn">⚠ ${html(b)} has ${n} transaction${n === 1 ? "" : "s"}. Pick the account to move ${n === 1 ? "it" : "them"} to.</p>
+        <label class="k">Move to<select name="to" required><option value="">Pick an account…</option>${opts}</select></label>
+        <p class="hint" style="margin:0">Its balances move too, where the other account doesn't have one yet for that month.</p>`
+        : `<p class="hint" style="margin:0">No transactions in ${html(b)}.</p>`}
+      <div class="modal-acts"><button type="button" class="btn ghost" data-x>Cancel</button><button class="btn danger-fill">${n ? "Move & delete" : "Delete"}</button></div>`);
+    f.addEventListener("submit", e => { e.preventDefault(); const to = n ? f.to.value : "";
+      if (n && !to) { flash("Pick where to move them first."); return; }
+      closeCatModal(); logAcct(to ? { from: b, to } : { from: b, del: 1 });
+      flash(to ? `Moved ${n} to ${to} and deleted ${b}.` : `Deleted ${b}.`); });
+  }
+  { // tap = edit, press and hold = delete
+    let timer = null, held = false, sx = 0, sy = 0; const list = $("bank-list");
+    list.addEventListener("pointerdown", e => { const b = e.target.closest(".cat-row"); if (!b) return; held = false; sx = e.clientX; sy = e.clientY;
+      clearTimeout(timer); b.classList.add("pressing"); timer = setTimeout(() => { held = true; b.classList.remove("pressing"); if (navigator.vibrate) try { navigator.vibrate(15); } catch (er) {} deleteBank(b.dataset.bankRow); }, 550); });
+    const cancel = () => { clearTimeout(timer); list.querySelectorAll(".pressing").forEach(x => x.classList.remove("pressing")); };
+    list.addEventListener("pointermove", e => { if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) cancel(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(t => list.addEventListener(t, cancel));
+    list.addEventListener("contextmenu", e => { if (e.target.closest(".cat-row")) e.preventDefault(); });
+    list.addEventListener("click", e => { const b = e.target.closest(".cat-row"); if (!b) return; if (held) { held = false; return; } editBank(b.dataset.bankRow); });
+  }
+  $("bank-plus").addEventListener("click", addBank);
 
   // ---------- misc ----------
   let toastT;
