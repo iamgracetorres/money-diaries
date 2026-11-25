@@ -825,6 +825,8 @@ select.sheet-hidden { display: none !important; }
       acctLog().push({ id: "ltl-acct", t, from: "Home Mortgage", add: 1, type: "loan" }); lists.movedLongTermLoan = 1; changed = true; }
     if (applyCatChangesToLists()) changed = true;
     if (applyAcctChangesToLists()) changed = true;
+    // Home Mortgage could land in Debit when a sync added the name before its group; put it under Long-term Loans once.
+    if (!lists.mortgageTypeFix) { if (lists.accounts.includes("Home Mortgage")) lists.accountTypes["Home Mortgage"] = "loan"; lists.creditAccounts = lists.accounts.filter(a => lists.accountTypes[a] === "credit"); lists.mortgageTypeFix = 1; changed = true; }
     // Adjustment: for fixing a beginning balance. Money in or money out, so it's in both lists.
     if ((lists.adjVersion || 0) < 1) { if (!lists.expenseGroups.some(g => g.name === "Adjustment")) lists.expenseGroups.push({ name: "Adjustment", subs: [] });
       if (!lists.income.includes("Adjustment")) lists.income.push("Adjustment"); lists.adjVersion = 1; changed = true; }
