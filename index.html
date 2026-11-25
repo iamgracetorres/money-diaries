@@ -466,6 +466,7 @@ select.sheet-hidden { display: none !important; }
         <select id="a-sub" aria-label="Subcategory"></select>
       </div>
       <select id="a-paid" aria-label="Paid from" hidden></select>
+      <input id="a-fee" inputmode="decimal" placeholder="Transfer fee, if any (₱ 0.00)" aria-label="Transfer fee" autocomplete="off" hidden>
       <input id="a-date" type="date" aria-label="Date">
       <button class="btn primary" type="submit">Add</button>
       <p class="hint" style="margin:0">Starred vendors fill in their category by themselves once you type the name.</p>
@@ -658,6 +659,7 @@ select.sheet-hidden { display: none !important; }
   function save() {
     try { syncInstallments((b, m, c) => period(b, m, c)); } catch (e) { console.warn(e); }
     try { linkTransfers((b, m, c) => period(b, m, c)); } catch (e) { console.warn(e); }
+    try { syncFees((b, m, c) => period(b, m, c)); } catch (e) { console.warn(e); }
     if (typeof scheduleSync === "function") try { scheduleSync(); } catch (e) {}
     try { localStorage.setItem(STORE, JSON.stringify({ lists, periods, ui, lastBackup, savedAt: new Date().toISOString() })); }
     catch (e) { flash("Couldn't save. Phone storage may be full."); }
@@ -925,7 +927,7 @@ select.sheet-hidden { display: none !important; }
     const unlink = (r, p) => { delete r.pair; if (r.auto) { drop(r, p); return; } delete r.paidFrom; delete r.sentTo; touch(r, p); };
     const amt = (r) => cleanAmount(r.amount);
     const ok = (r) => xIsDate(r.date) && amt(r) && !isSplit(r);
-    const free = (x, q, other, r, bank) => q.bank === other && x !== r && !x.pair && !isSplit(x) && x.type !== r.type && amt(x) === amt(r) && xIsDate(x.date) && dayDiff(x.date, r.date) <= 3
+    const free = (x, q, other, r, bank) => q.bank === other && x !== r && !x.pair && !x.feeOf && !isSplit(x) && x.type !== r.type && amt(x) === amt(r) && xIsDate(x.date) && dayDiff(x.date, r.date) <= 3
       && (!isXfer(x) || xferAcct(x) === bank);
     const monthFor = (bank, date) => date.slice(0, 7);
     // 1. Clean up links that no longer hold.
@@ -956,7 +958,7 @@ select.sheet-hidden { display: none !important; }
       real.pair = o.r.id; o.r.pair = real.id; touch(real, xp); touch(o.r, o.p); drop(x, xp);
     });
     // 2. Spot transfers on their own: same amount, money out on one account and in on another within 2 days, and the description says transfer or names the other account.
-    const loose = [...where.values()].filter(({ r }) => !r.pair && !isXfer(r) && !r.notXfer && !r.inst && !r.instOf && ok(r));
+    const loose = [...where.values()].filter(({ r }) => !r.pair && !isXfer(r) && !r.notXfer && !r.inst && !r.instOf && !r.feeOf && ok(r));
     const says = (r, other) => (XFER_WORDS.test(r.description || "") ? 1 : 0) + (acctWord(other) && compact(r.description).includes(acctWord(other)) ? 1 : 0);
     const cands = [];
     const byAmt = new Map(); loose.forEach(x => { const k = amt(x.r); if (!byAmt.has(k)) byAmt.set(k, []); byAmt.get(k).push(x); });
@@ -984,6 +986,28 @@ select.sheet-hidden { display: none !important; }
       if (x.type === "income") x.paidFrom = p.bank; else x.sentTo = p.bank;
       const q = getPeriod(other, monthFor(other, r.date), true); q.rows.push(x); q.rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
       where.set(x.id, { r: x, p: q }); r.pair = x.id; touch(r, p); changed.add(q);
+    });
+    return changed;
+  }
+  // Transfer fees: a transfer row with fee (r.fee) gets its own "Fees" expense on the sending account, linked by feeOf.
+  function syncFees(getPeriod) {
+    const changed = new Set(), now = Date.now(), all = [];
+    Object.values(periods).forEach(p => p.rows.forEach(r => all.push({ r, p })));
+    const byId = new Map(all.map(x => [x.r.id, x])), fees = new Map(); all.forEach(x => { if (x.r.feeOf) fees.set(x.r.feeOf, x); });
+    const drop = ({ r, p }) => { p.rows = p.rows.filter(y => y !== r); (p.deleted = p.deleted || []).push(r.id); changed.add(p); };
+    fees.forEach((f, id) => { const o = byId.get(id); if (!o || !isXfer(o.r) || !(parseFloat(cleanAmount(o.r.fee)) > 0)) { drop(f); fees.delete(id); } });
+    all.forEach(({ r, p }) => {
+      const amt = cleanAmount(r.fee); if (!isXfer(r) || !(parseFloat(amt) > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date || "")) return;
+      const from = r.type === "expense" ? p.bank : r.paidFrom, to = r.type === "expense" ? r.sentTo : p.bank;
+      if (!lists.accounts.includes(from)) return;
+      const desc = `Transfer fee (to ${to})`, month = r.date.slice(0, 7), f = fees.get(r.id);
+      if (f) {
+        if (f.p.bank !== from || (!isCredit(from) && f.p.month !== month)) { drop(f); fees.delete(r.id); }
+        else { if (f.r.amount !== amt || f.r.date !== r.date || f.r.description !== desc) { Object.assign(f.r, { amount: amt, date: r.date, description: desc, u: now }); changed.add(f.p); } return; }
+      }
+      const q = getPeriod(from, month, true);
+      q.rows.push({ id: uid(), u: now, date: r.date, amount: amt, type: "expense", description: desc, group: "Fees", category: "", feeOf: r.id, auto: 1, source: "transfer fee" });
+      q.rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")); changed.add(q);
     });
     return changed;
   }
@@ -1238,10 +1262,11 @@ select.sheet-hidden { display: none !important; }
     if (addType === "income") { g.innerHTML = incomeOptions(gv); s.hidden = true; }
     else { g.innerHTML = groupOptions(gv); s.hidden = false; s.innerHTML = subOptions(g.value, sv); s.disabled = !groupByName(g.value) || !groupByName(g.value).subs.length; }
     g.dataset.sheet = addType === "income" ? "income" : "group"; s.dataset.sheet = "sub"; s.dataset.g = g.value;
-    pf.hidden = false; pf.innerHTML = paidOptions(keep ? pf.value : "", addType); pf.setAttribute("aria-label", addType === "income" ? "Transfer from" : "Transfer to");
+    pf.hidden = false; pf.innerHTML = paidOptions(keep ? pf.value : "", addType); $("a-fee").hidden = !pf.value; if (!pf.value) $("a-fee").value = ""; pf.setAttribute("aria-label", addType === "income" ? "Transfer from" : "Transfer to");
     if (!$("a-date").value) $("a-date").value = isCredit(ui.bank) || ui.month === thisMonth() ? today() : ui.month + "-01";
     $("desc-list").innerHTML = [...new Set(Object.values(periods).flatMap(p => p.rows.map(r => r.description)).filter(Boolean))].slice(-80).map(d => `<option value="${html(d)}">`).join("");
   }
+  $("a-paid").addEventListener("change", () => { $("a-fee").hidden = !$("a-paid").value; if (!$("a-paid").value) $("a-fee").value = ""; });
   $("a-bank").addEventListener("change", e => { ui.bank = e.target.value; save(); renderPickers(); renderBalances(); renderList(); renderAddForm(true); });
   $("a-type").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; addType = b.dataset.v; renderAddForm(false); });
   $("a-group").addEventListener("change", () => { if (addType === "expense") renderAddForm(true); });
@@ -1260,13 +1285,14 @@ select.sheet-hidden { display: none !important; }
     const r = { id: uid(), u: Date.now(), date: $("a-date").value || today(), amount: amt, type: addType, description: $("a-desc").value.trim(), category: "" };
     if (addType === "income") { r.category = $("a-group").value; if ($("a-paid").value) r.paidFrom = $("a-paid").value; }
     else { const g = groupByName($("a-group").value); if (g) { r.group = g.name; r.category = g.subs.length ? $("a-sub").value : ""; } if ($("a-paid").value) r.sentTo = $("a-paid").value; }
+    if ((r.paidFrom || r.sentTo) && cleanAmount($("a-fee").value)) r.fee = cleanAmount($("a-fee").value);
     renameOne(r);
     const blank = r.paidFrom || r.sentTo ? false : needsCat(r); if (blank || findRule(r) && findRule(r).parts) applyRule(r);
     const month = isCredit(ui.bank) ? ui.month : r.date.slice(0, 7);
     period(ui.bank, month, true).rows.push(r);
     period(ui.bank, month).rows.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
     save();
-    $("a-amount").value = ""; $("a-desc").value = "";
+    $("a-amount").value = ""; $("a-desc").value = ""; $("a-fee").value = "";
     flash(`Added to ${ui.bank}${month !== ui.month ? ", " + monthLabel(month) : ""} ♡`);
     renderAll(); $("a-amount").focus();
   });
@@ -1319,7 +1345,8 @@ select.sheet-hidden { display: none !important; }
       const amt = cleanAmount(r.amount) ? peso(parseFloat(cleanAmount(r.amount))) : r.amount;
       let cats;
       const xf = xferAcct(r);
-      if (xf) cats = `<div class="row"><select data-f="xfer" class="xfer">${paidOptions(xf, r.type)}</select></div>`;
+      if (xf) cats = `<div class="row"><select data-f="xfer" class="xfer">${paidOptions(xf, r.type)}</select></div>`
+        + (r.type === "expense" || r.fee ? `<div class="row"><input data-f="fee" inputmode="decimal" placeholder="Transfer fee, if any (₱ 0.00)" aria-label="Transfer fee" value="${r.fee ? html(peso(parseFloat(r.fee))) : ""}"></div>${r.fee ? `<p class="hint" style="margin:0">Recorded as a separate ${peso(parseFloat(r.fee))} Fees expense on ${html(r.type === "expense" ? ui.bank : xf)}.</p>` : ""}` : "");
       else if (isSplit(r)) { const left = splitLeft(r);
         cats = `<div class="split-box"><div class="split-head">✂ Split into ${r.parts.length} parts${Math.abs(left) >= 0.005 ? ` · <b class="left">${left > 0 ? peso(left) + " left to assign" : peso(-left) + " too much"}</b>` : " · adds up ✓"}</div>`
           + r.parts.map((x, i) => { const g = r.type === "income" ? "" : rowGroup(x); const grp = groupByName(g);
@@ -1350,6 +1377,7 @@ select.sheet-hidden { display: none !important; }
         <div class="row"><input class="amt" data-f="amount" inputmode="decimal" value="${html(amt)}" aria-label="Amount"><input type="date" data-f="date" value="${html(r.date)}" aria-label="Date"></div>
         ${cats}
         ${instBox}
+        ${r.feeOf ? `<span class="tag xfer">🏷️ Fee for a transfer · deleting the transfer removes this too</span>` : ""}
         ${r.instOf ? `<span class="tag xfer">🗓 Installment ${r.instNo}${(() => { const o = Object.values(periods).flatMap(q => q.rows).find(y => y.id === r.instOf); return o && o.inst ? ` of ${o.inst.months} · ${html(o.description || "")}` : ""; })()}${r.auto ? " · added for you" : ""}</span>` : ""}
         <div class="tx-top">${dup ? `<span class="tag dup">⚠ Looks like a duplicate</span>` : xf ? `<span class="tag xfer">↔ Transfer ${r.type === "income" ? "from" : "to"} ${html(xf)}${r.pair ? " · on both accounts ✓" : ""}${r.auto ? " · made for you" : ""}</span>` : ""}
           <span style="margin-left:auto"></span>
@@ -1384,6 +1412,7 @@ select.sheet-hidden { display: none !important; }
       if (cur.months >= 2 && isDate(cur.first)) { r.inst = cur; instOpen = null; flash(`🗓 ${cur.months} months, starting ${short(cur.first)}`); }
       else { r.inst = cur; }
     }
+    if (f === "fee") { const a = cleanAmount(v); if (a && parseFloat(a) > 0) { r.fee = a; flash(`Fee of ${peso(parseFloat(a))} recorded under Fees`); } else delete r.fee; }
     if (f === "xfer") { delete r.paidFrom; delete r.sentTo; if (v) { if (r.type === "income") r.paidFrom = v; else r.sentTo = v; delete r.notXfer; flash(`↔ Recorded on ${v} too`); } else { r.notXfer = 1; delete r.auto; } }
     const rule = findRule(r);
     if (rule && !rule.parts && (f === "sub" || f === "income-cat" || f === "xfer" || f === "group") && !needsCat(r)) { syncRule(rule, r); flash(`Updated what I remember for "${rule.label}"`); }
@@ -2136,7 +2165,7 @@ select.sheet-hidden { display: none !important; }
   { let hiddenAt = 0; document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") hiddenAt = Date.now();
       else if (hiddenAt && Date.now() - hiddenAt > 30 * 60000) { backToThisMonth(); renderAll(); } }); }
-  try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
+  try { if (syncInstallments((b, m, c) => period(b, m, c)).size + linkTransfers((b, m, c) => period(b, m, c)).size + syncFees((b, m, c) => period(b, m, c)).size) save(); } catch (e) { console.warn(e); }
   renderNet(); renderAll(); showTab(ui.tab || "home");
   gdState(gd.on ? (tokenOk() ? "On" : "Signing in…") : "Off"); autoSync();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
