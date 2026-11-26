@@ -1428,7 +1428,7 @@ select.sheet-hidden { display: none !important; }
               <div class="row"><input data-pf="amount" inputmode="decimal" value="${html(cleanAmount(x.amount) ? peso(parseFloat(cleanAmount(x.amount))) : x.amount || "")}" placeholder="₱ 0.00" aria-label="Part ${i + 1} amount"><button type="button" class="btn small danger" data-act="del-part" style="flex:0 0 auto">Remove part</button></div>
               <input data-pf="note" value="${html(x.note || "")}" placeholder="What's this part?" aria-label="Part ${i + 1} description">
               ${r.type === "income" ? `<select data-pf="income-cat" data-sheet="income">${incomeOptions(x.category)}</select>${x.category === "Debt Repayment" ? `<select data-pf="debtPerson" class="${x.debtPerson ? "" : "nocat"}" aria-label="Who paid">${personOptions(x.debtPerson)}</select>` : ""}`
-                : `<div class="row"><select data-pf="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>${g === "Debt Payments" ? `<select data-pf="debtId" class="${x.debtId ? "" : "nocat"}" aria-label="Which debt">${myDebtOptions(x.debtId)}</select>` : ""}`}
+                : `<div class="row"><select data-pf="group" data-sheet="group" class="${g ? "" : "nocat"}">${groupOptions(g)}</select><select data-pf="sub" data-sheet="sub" data-g="${html(g)}" class="${catOk(grp, x.category) ? "" : "nocat"}"${grp && grp.subs.length ? "" : " disabled"}>${subOptions(g, x.category)}</select></div>${g === "Debt Payments" ? `<select data-pf="debtId" class="${x.debtId ? "" : "nocat"}" aria-label="Which debt">${myDebtOptions(x.debtId)}</select>` : ""}<select data-pf="toacct" aria-label="Make this part a transfer"><option value="">Not a transfer</option>${acctOptgroups("", a => a !== ui.bank, a => "↔ This part pays / goes to " + a)}</select>`}
             </div>`; }).join("")
           + `<div class="split-acts"><button type="button" class="btn small" data-act="add-part">+ Add part</button>${left > 0.004 ? `<button type="button" class="btn small" data-act="fill-left">Put ${peso(left)} in the last part</button>` : ""}<button type="button" class="btn ghost small" data-act="unsplit">Undo split</button></div></div>`; }
       else if (r.type === "income" && !r.refund) cats = `<div class="row"><select data-f="income-cat" data-sheet="income" class="${lists.income.includes(r.category) ? "" : "nocat"}">${incomeOptions(r.category)}</select>${r.category === "Debt Repayment" ? `<select data-f="debtPerson" class="${r.debtPerson ? "" : "nocat"}" aria-label="Who paid">${personOptions(r.debtPerson)}</select>` : ""}</div><div class="row"><select data-f="xfer">${paidOptions("", r.type)}</select></div><button type="button" class="btn small ghost" data-act="refund-on" style="justify-self:start">↩ It's a refund of an expense</button>`;
@@ -1486,6 +1486,12 @@ select.sheet-hidden { display: none !important; }
       if (pf === "note") x.note = v;
       if (pf === "group") { x.group = v; const g = groupByName(v); if (!g || !g.subs.includes(x.category)) x.category = ""; if (!v) delete x.group; }
       if (pf === "sub" || pf === "income-cat") { x.category = v; if (v !== "Debt Repayment") delete x.debtPerson; }
+      if (pf === "toacct" && v) {
+        // Turn the split into a transfer: this part goes to the other account, the other parts stay as expenses.
+        const i = +e.target.closest(".part").dataset.i;
+        r.charges = r.parts.filter((_, j) => j !== i).map(y => { const c = { amount: cleanAmount(y.amount) || "", category: y.category || "", note: y.note || "" }; const yg = rowGroup(y); if (yg) c.group = yg; return c; });
+        delete r.parts; delete r.group; r.category = ""; r.sentTo = v; delete r.notXfer;
+        save(); renderAll(); flash(`↔ ${peso(parseFloat(cleanAmount(x.amount)) || 0)} now goes to ${v}; the rest stays as expenses`); return; }
       if (pf === "group" && v !== "Debt Payments") delete x.debtId;
       if (pf === "debtId") { if (v) x.debtId = v; else delete x.debtId; }
       if (pf === "debtPerson") { if (v) x.debtPerson = v; else delete x.debtPerson; }
